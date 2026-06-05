@@ -1,0 +1,50 @@
+# ===========================
+# .gitignore - Bot BPG ICA
+# ===========================
+# No subir secretos, tokens ni archivos sensibles
+openclaw.json
+config.json
+models.json
+.env
+*.local
+
+# Credenciales y sesiones
+credentials/
+telegram/
+identity/
+exec-approvals.json
+update-check.json
+devices/
+
+# Caché del sistema
+completions/
+logs/
+delivery-queue/
+canvas/
+browser/
+media/
+cron/
+extensions/
+agents/
+node_modules/
+
+# Cache de Python
+__pycache__/
+*.pyc
+.cache/
+*.egg-info/
+venv/
+
+# Respaldos y temporales
+*.tar.gz
+*.bak
+tmp/
+/tmp/
+
+# Archivos de script generados
+generar_*.py
+venv/
+*.pyc
+__pycache__/
+.cache/
+inbound/
