@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b3d2e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Auditor BPG ICA</title>
+<style>
+  :root { --verde:#0b3d2e; --verde2:#14614a; --oro:#c9a227; --rojo:#c62828; --gris:#f2f4f3; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; background:var(--gris); color:#1c2b26; }
+  header { background:var(--verde); color:#fff; padding:16px 18px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  header .logo { width:38px; height:38px; background:var(--oro); border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:19px; color:var(--verde); }
+  header h1 { margin:0; font-size:17px; line-height:1.15; }
+  header small { display:block; font-weight:400; opacity:.8; font-size:11.5px; }
+  main { padding:16px; max-width:640px; margin:0 auto; }
+  .card { background:#fff; border-radius:14px; padding:18px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  label { display:block; font-size:13px; font-weight:700; color:var(--verde2); margin:12px 0 4px; }
+  input { width:100%; padding:12px; border:1.5px solid #cfd8d3; border-radius:10px; font-size:16px; background:#fafbfa; }
+  input:focus { outline:2px solid var(--verde2); border-color:transparent; }
+  .btn { display:block; width:100%; padding:15px; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; margin-top:14px; }
+  .btn-primario { background:var(--verde); color:#fff; }
+  .btn-secundario { background:#e8eeeb; color:var(--verde); }
+  .btn:disabled { opacity:.45; }
+  .progreso { height:10px; background:#dde5e0; border-radius:6px; overflow:hidden; margin:6px 0 14px; }
+  .progreso div { height:100%; background:var(--verde2); width:0%; transition:width .25s; }
+  .contador { text-align:center; font-size:13px; color:#5a6f66; margin-bottom:4px; }
+  .pregunta { font-size:17px; line-height:1.45; margin:8px 0 4px; }
+  .meta { font-size:12px; color:#7a8f85; font-weight:700; letter-spacing:.3px; }
+  .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11.5px; font-weight:800; color:#fff; }
+  .b-F { background:#0b6e4f; } .b-My { background:#c07a1b; } .b-Mn { background:#5b7c99; }
+  .resp { display:flex; gap:10px; margin-top:18px; }
+  .resp button { flex:1; padding:20px 0; border:none; border-radius:14px; font-size:19px; font-weight:800; color:#fff; cursor:pointer; }
+  .r-si { background:#2e7d32; } .r-no { background:#c62828; } .r-na { background:#616161; }
+  .resp button:active { transform:scale(.96); }
+  .nav { display:flex; gap:10px; margin-top:12px; }
+  .nav button { flex:1; padding:12px; border:none; border-radius:10px; background:#e8eeeb; color:var(--verde); font-weight:700; font-size:14px; }
+  .resultado { text-align:center; }
+  .concepto { font-size:22px; font-weight:800; margin:8px 0; }
+  .c-cert { color:#2e7d32; } .c-apl { color:var(--rojo); }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+  td,th { padding:8px 6px; border-bottom:1px solid #e3e9e6; text-align:left; }
+  th { color:#5a6f66; font-size:12px; text-transform:uppercase; }
+  .hallazgo { background:#fdecea; border-left:4px solid var(--rojo); padding:10px 12px; border-radius:0 8px 8px 0; margin:8px 0; font-size:14px; }
+  .oculto { display:none; }
+  .fila-hist { display:flex; justify-content:space-between; align-items:center; padding:12px 4px; border-bottom:1px solid #e3e9e6; }
+  .fila-hist small { color:#7a8f85; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1c2b26; color:#fff; padding:11px 20px; border-radius:30px; font-size:14px; opacity:0; transition:opacity .3s; pointer-events:none; z-index:99; }
+  .oculto-btn { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">✓</div>
+  <div><h1>Auditor BPG ICA<small>Buenas Prácticas Ganaderas · Res. 067449</small></h1></div>
+</header>
+
+<main>
+  <!-- PANTALLA: INICIO -->
+  <section id="pantalla-inicio">
+    <div class="card">
+      <h2 style="margin:0 0 4px;font-size:18px;">Registro del predio</h2>
+      <p style="margin:0 0 6px;color:#5a6f66;font-size:13px;">Complete los datos antes de iniciar la auditoría.</p>
+      <label>Nombre del predio *</label><input id="f-predio" placeholder="Ej. El Rosal">
+      <label>Propietario *</label><input id="f-propietario" placeholder="Nombre completo">
+      <label>Cédula</label><input id="f-cedula" inputmode="numeric" placeholder="Número de cédula">
+      <label>Municipio *</label><input id="f-municipio" placeholder="Ej. Cajibío">
+      <label>Vereda</label><input id="f-vereda" placeholder="Ej. La Unión">
+      <label>Teléfono</label><input id="f-telefono" inputmode="tel" placeholder="Ej. 3100000000">
+      <label>GPS (lat, lon)</label><input id="f-gps" placeholder="Ej. 2.597141, -76.614733">
+      <button class="btn btn-primario" onclick="iniciarAuditoria()">▶ Iniciar auditoría (62 criterios)</button>
+      <button class="btn btn-secundario" onclick="mostrarHistorial()" style="margin-top:10px;">📁 Auditorías guardadas</button>
+    </div>
+  </section>
+
+  <!-- PANTALLA: CUESTIONARIO -->
+  <section id="pantalla-cuestionario" class="oculto">
+    <div class="contador" id="contador">0 / 62</div>
+    <div class="progreso"><div id="barra"></div></div>
+    <div class="card">
+      <div class="meta" id="meta">—</div>
+      <div class="pregunta" id="pregunta">—</div>
+      <div class="resp">
+        <button class="r-si" onclick="responder('SI')">SI</button>
+        <button class="r-no" onclick="responder('NO')">NO</button>
+        <button class="r-na" onclick="responder('NA')">NA</button>
+      </div>
+      <div class="nav">
+        <button onclick="anterior()">← Anterior</button>
+        <button onclick="guardarParcial()">💾 Guardar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANTALLA: RESULTADO -->
+  <section id="pantalla-resultado" class="oculto">
+    <div class="card resultado">
+      <h2 style="margin:0;font-size:16px;color:#5a6f66;">RESULTADO DE LA AUDITORÍA</h2>
+      <div style="font-size:13px;margin-top:4px;" id="r-predio"></div>
+      <div class="concepto" id="r-concepto"></div>
+      <table>
+        <tr><th>Tipo</th><th>Cumplimiento</th><th>Umbral</th><th></th></tr>
+        <tr><td>Fundamentales</td><td id="r-f"></td><td>≥ 90%</td><td id="r-f-ok"></td></tr>
+        <tr><td>Mayores</td><td id="r-my"></td><td>≥ 80%</td><td id="r-my-ok"></td></tr>
+        <tr><td>Menores</td><td id="r-mn"></td><td>≥ 70%</td><td id="r-mn-ok"></td></tr>
+      </table>
+      <div id="r-hallazgos" style="text-align:left;margin-top:12px;"></div>
+      <button class="btn btn-primario" onclick="exportarJSON()">📤 Exportar JSON (enviar al bot)</button>
+      <button class="btn btn-secundario" onclick="compartirResultado()">📲 Compartir archivo</button>
+      <button class="btn btn-secundario" onclick="nuevaAuditoria()">+ Nueva auditoría</button>
+    </div>
+  </section>
+
+  <!-- PANTALLA: HISTORIAL -->
+  <section id="pantalla-historial" class="oculto">
+    <div class="card">
+      <h2 style="margin:0 0 8px;font-size:18px;">📁 Auditorías en este dispositivo</h2>
+      <div id="lista-historial"></div>
+      <button class="btn btn-secundario" onclick="volverInicio()">← Volver</button>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+// ── CRITERIOS EMBEBIDOS (generados desde la base de datos) ──
+const CRITERIOS = [{"id": "1.1", "nombre": "Plan Sanitario", "tipo": "F", "articulo": "5.1.1", "pregunta": "¿El predio cuenta con un plan sanitario elaborado y suscrito por un Médico Veterinario o Médico Veterinario Zootecnista con matrícula profesional vigente?"}, {"id": "1.2", "nombre": "Certificación de Hatos Libres", "tipo": "My", "articulo": "5.1.2", "pregunta": "¿El predio cuenta con certificación oficial vigente que acredite el hato como libre de brucelosis y tuberculosis?"}, {"id": "1.3", "nombre": "Protocolo de Aislamiento", "tipo": "F", "articulo": "5.1.3", "pregunta": "¿El predio cuenta con un protocolo escrito de manejo y aislamiento de animales enfermos?"}, {"id": "1.4", "nombre": "Registro de Diagnósticos", "tipo": "F", "articulo": "5.1.4", "pregunta": "¿Se lleva un registro escrito de los diagnósticos de enfermedades y las mortalidades presentadas en el predio?"}, {"id": "1.5", "nombre": "Instructivo de Enfermedades", "tipo": "F", "articulo": "5.1.5", "pregunta": "¿Existe un instructivo visible para el reconocimiento y notificación de enfermedades de control oficial?"}, {"id": "1.6", "nombre": "Área de Enfermería", "tipo": "F", "articulo": "5.1.6", "pregunta": "¿El predio dispone de un área o potrero señalizado como sitio de enfermería o tratamiento?"}, {"id": "1.7", "nombre": "Programa de Mastitis", "tipo": "F", "articulo": "5.1.7", "pregunta": "¿El predio cuenta con un programa de prevención y control de mastitis documentado?"}, {"id": "2.1", "nombre": "Identificación de Animales", "tipo": "F", "articulo": "5.2.1", "pregunta": "¿Los animales están identificados de manera única e individual?"}, {"id": "2.2", "nombre": "Registro Individual", "tipo": "My", "articulo": "5.2.2", "pregunta": "¿Se lleva un registro o ficha individual para cada animal?"}, {"id": "3.1", "nombre": "Delimitación del Predio", "tipo": "My", "articulo": "5.3.1", "pregunta": "¿El predio cuenta con cercos, broches, puertas o mecanismos en buen estado, que permitan delimitar el predio?"}, {"id": "3.2", "nombre": "Registro de Visitas", "tipo": "My", "articulo": "5.3.2", "pregunta": "¿Se lleva un registro escrito de ingreso de personas y vehículos?"}, {"id": "3.3", "nombre": "Cuarentena", "tipo": "My", "articulo": "5.3.3", "pregunta": "¿El predio cuenta con un procedimiento de ingreso y aislamiento de animales con cuarentena no menor a 21 días?"}, {"id": "3.4", "nombre": "Material Genético", "tipo": "Mn", "articulo": "5.3.4", "pregunta": "¿El material genético proviene de centros de producción o importación autorizados por el ICA?"}, {"id": "3.5", "nombre": "Identificación de Áreas", "tipo": "Mn", "articulo": "5.3.5", "pregunta": "¿Cada área de producción (bodega, almacén, botiquín) está debidamente identificada en un lugar visible?"}, {"id": "4.1", "nombre": "Zona de Espera", "tipo": "My", "articulo": "6.1", "pregunta": "¿La zona de espera de los animales antes del ordeño está en condiciones higiénicas adecuadas?"}, {"id": "4.2", "nombre": "Instalaciones de Ordeño Fijo", "tipo": "F", "articulo": "6.2", "pregunta": "¿Las instalaciones de ordeño fijo tienen pisos, paredes y techos en buen estado?"}, {"id": "4.3", "nombre": "Instalaciones de Ordeño Móvil", "tipo": "F", "articulo": "6.3", "pregunta": "¿Las instalaciones de ordeño móvil en potrero están protegidas de la intemperie?"}, {"id": "4.4", "nombre": "Instalaciones Sanitarias", "tipo": "Mn", "articulo": "6.4", "pregunta": "¿El predio cuenta con servicios sanitarios adecuados para el personal?"}, {"id": "4.5", "nombre": "Rutina de Ordeño", "tipo": "F", "articulo": "6.5.1", "pregunta": "¿Existe un procedimiento documentado de la rutina de ordeño?"}, {"id": "4.6", "nombre": "Equipos y Utensilios", "tipo": "F", "articulo": "6.5.2,6.5.3,6.5.6", "pregunta": "¿Los equipos y utensilios de ordeño son apropiados, están limpios y almacenados correctamente?"}, {"id": "4.7", "nombre": "Disposición Leche Anormal", "tipo": "F", "articulo": "6.5.4", "pregunta": "¿La leche anormal y de retiro se descarta adecuadamente?"}, {"id": "4.8", "nombre": "Agua para Ordeño", "tipo": "My", "articulo": "6.5.5", "pregunta": "¿El agua utilizada para la rutina de ordeño es potable?"}, {"id": "4.9", "nombre": "Conservación de la Leche", "tipo": "My", "articulo": "6.5.7", "pregunta": "¿El sistema de almacenamiento mantiene la leche a temperatura adecuada?"}, {"id": "5.1", "nombre": "Cuarto del Tanque de Leche", "tipo": "F", "articulo": "7.1,7.2,7.3", "pregunta": "¿El tanque de enfriamiento está en un cuarto cerrado y dedicado únicamente para tal fin?"}, {"id": "5.2", "nombre": "Registro de Temperatura", "tipo": "My", "articulo": "7.5", "pregunta": "¿Se cuenta con un registro de temperatura que verifique el funcionamiento del tanque?"}, {"id": "6.1", "nombre": "Productos con Registro ICA", "tipo": "F", "articulo": "8.1", "pregunta": "¿Se utilizan únicamente productos veterinarios con registro ICA?"}, {"id": "6.2", "nombre": "Productos No Vencidos", "tipo": "F", "articulo": "8.2", "pregunta": "¿Los productos veterinarios están vigentes?"}, {"id": "6.3", "nombre": "Almacenamiento de Medicamentos", "tipo": "My", "articulo": "8.3,8.4,8.5", "pregunta": "¿Los medicamentos están almacenados según condiciones del rotulado?"}, {"id": "6.4", "nombre": "Sustancias Prohibidas", "tipo": "F", "articulo": "8.6", "pregunta": "¿No se utilizan sustancias prohibidas por el ICA?"}, {"id": "6.5", "nombre": "Materias Primas como Medicamentos", "tipo": "F", "articulo": "8.7", "pregunta": "¿No se suministran materias primas químicas directamente a los animales?"}, {"id": "6.6", "nombre": "Tiempos de Retiro", "tipo": "F", "articulo": "8.8", "pregunta": "¿Se respetan los tiempos de retiro consignados en los medicamentos?"}, {"id": "6.7", "nombre": "Prescripción Veterinaria", "tipo": "F", "articulo": "8.9,8.15", "pregunta": "¿Los tratamientos tienen prescripción escrita de MV o MVZ?"}, {"id": "6.8", "nombre": "Registros de Tratamientos", "tipo": "F", "articulo": "8.10", "pregunta": "¿Se lleva registro de los tratamientos realizados?"}, {"id": "6.9", "nombre": "Equipos de Administración", "tipo": "My", "articulo": "8.11,8.12", "pregunta": "¿Los equipos para la aplicación de medicamentos están limpios y se usan agujas desechables?"}, {"id": "6.10", "nombre": "Inventario de Productos", "tipo": "My", "articulo": "8.13", "pregunta": "¿Se lleva un control de inventario de productos veterinarios?"}, {"id": "6.11", "nombre": "Autorización para Aplicación", "tipo": "My", "articulo": "8.14", "pregunta": "¿El responsable de aplicar medicamentos cuenta con capacitación y autorización?"}, {"id": "6.12", "nombre": "Notificación de Eventos Adversos", "tipo": "My", "articulo": "8.16", "pregunta": "¿Se notifican al ICA los eventos adversos?"}, {"id": "7.1", "nombre": "Alimentos con Registro ICA", "tipo": "F", "articulo": "9.1", "pregunta": "¿Los alimentos comerciales cuentan con registro ICA y están bien almacenados?"}, {"id": "7.2", "nombre": "Alimento Medicado", "tipo": "F", "articulo": "9.2", "pregunta": "¿Utiliza alimentos para administrar medicamentos con registro ICA y fórmula médica?"}, {"id": "7.3", "nombre": "Prohibiciones Alimentarias", "tipo": "F", "articulo": "9.6,9.7", "pregunta": "¿No se utilizan harinas de carne, sangre y hueso?"}, {"id": "7.4", "nombre": "Subproductos", "tipo": "My", "articulo": "9.4", "pregunta": "¿Los subproductos están en buen estado y se registra su origen?"}, {"id": "7.5", "nombre": "Insumos Agrícolas", "tipo": "F", "articulo": "9.8,9.9", "pregunta": "¿Se emplean plaguicidas con registro ICA, respetando períodos de carencia?"}, {"id": "7.6", "nombre": "Inventario de Alimentos", "tipo": "Mn", "articulo": "9.10", "pregunta": "¿Se lleva inventario de alimentos y materias primas?"}, {"id": "7.7", "nombre": "Calidad del Agua", "tipo": "My", "articulo": "9.11,9.12,9.13", "pregunta": "¿Se realiza monitoreo anual de la calidad del agua para consumo animal?"}, {"id": "8.1", "nombre": "Limpieza de Áreas", "tipo": "My", "articulo": "10.1,10.4", "pregunta": "¿Las áreas, equipos y utensilios están limpios y ordenados?"}, {"id": "8.2", "nombre": "Ubicación del Predio", "tipo": "My", "articulo": "10.2", "pregunta": "¿El predio está ubicado en zonas alejadas de focos de contaminación?"}, {"id": "8.3", "nombre": "Protección de Fuentes Hídricas", "tipo": "My", "articulo": "10.3", "pregunta": "¿Se implementan acciones para proteger las fuentes de agua?"}, {"id": "8.4", "nombre": "Disposición de Estiércol", "tipo": "My", "articulo": "10.5", "pregunta": "¿Se utilizan métodos apropiados para la disposición de estiércol?"}, {"id": "8.5", "nombre": "Manejo de Residuos", "tipo": "My", "articulo": "10.6,10.7,10.8,10.15", "pregunta": "¿Los residuos sólidos se clasifican y disponen adecuadamente?"}, {"id": "8.6", "nombre": "Almacenamiento de Insumos", "tipo": "My", "articulo": "10.9,10.10", "pregunta": "¿Los alimentos, medicamentos y plaguicidas se almacenan en áreas separadas?"}, {"id": "8.7", "nombre": "Control de Plagas", "tipo": "My", "articulo": "10.12,10.13", "pregunta": "¿Se cuenta con un programa escrito de control de plagas y roedores?"}, {"id": "9.1", "nombre": "Adaptación de Animales", "tipo": "My", "articulo": "11.1.1", "pregunta": "¿Se realiza un proceso de adaptación para animales introducidos?"}, {"id": "9.2", "nombre": "Superficies y Espacio", "tipo": "My", "articulo": "11.1.2", "pregunta": "¿Las superficies permiten un desplazamiento seguro?"}, {"id": "9.3", "nombre": "Agrupamiento Social", "tipo": "My", "articulo": "11.1.3", "pregunta": "¿Se permite el agrupamiento social sin causar lesiones?"}, {"id": "9.4", "nombre": "Estabulación", "tipo": "My", "articulo": "11.1.4", "pregunta": "¿En estabulación, la ventilación y temperatura son adecuadas?"}, {"id": "9.5", "nombre": "Enfermedades y Parásitos", "tipo": "My", "articulo": "11.1.6", "pregunta": "¿Se controlan y tratan oportunamente las enfermedades de los animales?"}, {"id": "9.6", "nombre": "Alimentos y Agua", "tipo": "My", "articulo": "11.1.5", "pregunta": "¿Los animales tienen acceso suficiente a alimentos y agua?"}, {"id": "9.7", "nombre": "Sacrificio Humanitario", "tipo": "My", "articulo": "11.1.6", "pregunta": "¿Cuando es necesario, se aplica sacrificio humanitario?"}, {"id": "9.8", "nombre": "Manejo del Dolor", "tipo": "F", "articulo": "11.1.7", "pregunta": "¿En procedimientos dolorosos, se maneja el dolor en los animales?"}, {"id": "9.9", "nombre": "Relación Hombre-Animal", "tipo": "My", "articulo": "11.1.8", "pregunta": "¿El manejo promueve una relación positiva sin causar estrés en los animales?"}, {"id": "10.1", "nombre": "Capacitación del Personal", "tipo": "F", "articulo": "11.2.1", "pregunta": "¿El personal cuenta con capacitación en buenas prácticas ganaderas?"}, {"id": "10.2", "nombre": "Uso de Implementos", "tipo": "Mn", "articulo": "11.2.1", "pregunta": "¿El personal hace uso de los implementos necesarios?"}];
+
+const UMBRALES = { F: 90, My: 80, Mn: 70 };
+let estado = null; // {idx, respuestas:{}, predio:{}}
+
+function $(id) { return document.getElementById(id); }
+function mostrar(p) {
+  ['inicio','cuestionario','resultado','historial'].forEach(x => $('pantalla-'+x).classList.toggle('oculto', x !== p));
+  window.scrollTo(0,0);
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.style.opacity = 1;
+  setTimeout(() => t.style.opacity = 0, 2200);
+}
+
+function iniciarAuditoria() {
+  const predio = {
+    predio: $('f-predio').value.trim(), propietario: $('f-propietario').value.trim(),
+    cedula: $('f-cedula').value.trim(), municipio: $('f-municipio').value.trim(),
+    vereda: $('f-vereda').value.trim(), telefono: $('f-telefono').value.trim(),
+    gps: $('f-gps').value.trim()
+  };
+  if (!predio.predio || !predio.propietario || !predio.municipio) { toast('⚠️ Complete predio, propietario y municipio'); return; }
+  estado = { idx: 0, respuestas: {}, predio };
+  mostrar('cuestionario'); pintarPregunta();
+}
+
+function pintarPregunta() {
+  const c = CRITERIOS[estado.idx];
+  const i = estado.idx + 1;
+  $('contador').textContent = i + ' / ' + CRITERIOS.length;
+  $('barra').style.width = (i / CRITERIOS.length * 100) + '%';
+  $('meta').innerHTML = c.id + ' · ' + c.nombre.toUpperCase() + ' &nbsp;<span class="badge b-' + c.tipo + '">' + c.tipo + ' · Art. ' + c.articulo + '</span>';
+  $('pregunta').textContent = c.pregunta;
+}
+
+function responder(v) {
+  estado.respuestas[CRITERIOS[estado.idx].id] = v;
+  if (estado.idx < CRITERIOS.length - 1) { estado.idx++; pintarPregunta(); }
+  else { calcularResultado(); }
+}
+
+function anterior() {
+  if (estado.idx > 0) { estado.idx--; pintarPregunta(); }
+}
+
+function guardarParcial() {
+  const c = CRITERIOS[estado.idx];
+  estado.respuestas[c.id] = estado.respuestas[c.id] || '';
+  guardarLocal('progreso', estado);
+  toast('💾 Progreso guardado en el dispositivo');
+}
+
+function calcularResultado() {
+  const res = { F:{c:0,t:0}, My:{c:0,t:0}, Mn:{c:0,t:0} };
+  CRITERIOS.forEach(c => {
+    const r = estado.respuestas[c.id];
+    if (r === 'SI') { res[c.tipo].c++; res[c.tipo].t++; }
+    else if (r === 'NO') { res[c.tipo].t++; }
+  });
+  const pct = t => t.t ? Math.round(t.c / t.t * 10000) / 100 : 100;
+  const f = pct(res.F), my = pct(res.My), mn = pct(res.Mn);
+  const concepto = (f >= UMBRALES.F && my >= UMBRALES.My && mn >= UMBRALES.Mn) ? 'CERTIFICABLE' : 'APLAZADO';
+  const ok = v => v >= 0 ? (v >= (v===f?90:v===my?80:70) ? '✓' : '✗') : '';
+
+  $('r-predio').textContent = estado.predio.predio.toUpperCase() + ' — ' + estado.predio.municipio;
+  $('r-concepto').textContent = concepto;
+  $('r-concepto').className = 'concepto ' + (concepto === 'CERTIFICABLE' ? 'c-cert' : 'c-apl');
+  $('r-f').textContent = res.F.c + '/' + res.F.t + ' (' + f + '%)';
+  $('r-my').textContent = res.My.c + '/' + res.My.t + ' (' + my + '%)';
+  $('r-mn').textContent = res.Mn.c + '/' + res.Mn.t + ' (' + mn + '%)';
+  $('r-f-ok').textContent = f >= 90 ? '✓' : '✗';
+  $('r-my-ok').textContent = my >= 80 ? '✓' : '✗';
+  $('r-mn-ok').textContent = mn >= 70 ? '✓' : '✗';
+
+  const nos = CRITERIOS.filter(c => estado.respuestas[c.id] === 'NO');
+  $('r-hallazgos').innerHTML = nos.length
+    ? '<strong>🔴 Hallazgos (' + nos.length + '):</strong>' + nos.map(c =>
+        '<div class="hallazgo"><b>' + c.id + '</b> ' + c.nombre + ' <small>(' + c.tipo + ' · Art. ' + c.articulo + ')</small></div>').join('')
+    : '<p style="color:#2e7d32;font-weight:700;">✅ Sin hallazgos — todos los criterios cumplen</p>';
+
+  estado.resultado = { concepto, f, my, mn, detalle: res, hallazgos: nos.map(c => c.id) };
+  guardarLocal('auditorias', estado);
+  mostrar('resultado');
+}
+
+function exportarJSON() {
+  const detalle = {};
+  CRITERIOS.forEach(c => { const r = estado.respuestas[c.id]; if (r) detalle[c.id] = r; });
+  const p = estado.predio;
+  const json = {
+    predio: p.predio, propietario: p.propietario, identificacion: p.cedula,
+    telefono: p.telefono, departamento: 'Cauca', municipio: p.municipio,
+    vereda: p.vereda, gps: p.gps,
+    fecha: new Date().toISOString().slice(0,10),
+    concepto: estado.resultado.concepto,
+    detalle_puntos: detalle
+  };
+  const blob = new Blob([JSON.stringify(json, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'auditoria_' + p.predio.toLowerCase().replace(/[^a-z0-9]+/g,'_') + '.json';
+  a.click();
+  toast('📤 JSON exportado — envíelo al bot @Auditor_ICA_bot');
+}
+
+async function compartirResultado() {
+  const detalle = {};
+  CRITERIOS.forEach(c => { const r = estado.respuestas[c.id]; if (r) detalle[c.id] = r; });
+  const json = JSON.stringify({
+    predio: estado.predio.predio, propietario: estado.predio.propietario,
+    identificacion: estado.predio.cedula, telefono: estado.predio.telefono,
+    departamento: 'Cauca', municipio: estado.predio.municipio, vereda: estado.predio.vereda,
+    gps: estado.predio.gps, fecha: new Date().toISOString().slice(0,10),
+    concepto: estado.resultado.concepto, detalle_puntos: detalle
+  }, null, 1);
+  const archivo = new File([json], 'auditoria_bpg.json', { type: 'application/json' });
+  if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+    try { await navigator.share({ files: [archivo], title: 'Auditoría BPG', text: 'Resultado de auditoría BPG ICA' }); }
+    catch (e) { /* cancelado */ }
+  } else {
+    navigator.clipboard.writeText(json).then(() => toast('📋 JSON copiado — péguelo al bot'));
+  }
+}
+
+function nuevaAuditoria() { estado = null; mostrar('inicio'); }
+function volverInicio() { mostrar('inicio'); }
+
+function mostrarHistorial() {
+  const lista = leerLocal('auditorias') || [];
+  const caja = $('lista-historial');
+  caja.innerHTML = lista.length
+    ? lista.slice().reverse().map((a, i) =>
+        '<div class="fila-hist"><div><b>' + (a.predio.predio || '').toUpperCase() + '</b> · ' +
+        (a.resultado.concepto || '') + '<br><small>' + (a.predio.municipio || '') + ' — ' +
+        (a.resultado ? a.resultado.f + '% F · ' + a.resultado.my + '% My · ' + a.resultado.mn + '% Mn' : 'incompleta') +
+        '</small></div><button class="btn btn-secundario" style="margin:0;padding:8px 12px;width:auto;font-size:13px;" onclick="cargarDelHistorial(' + i + ')">Ver</button></div>'
+      ).join('')
+    : '<p style="color:#7a8f85;text-align:center;">Aún no hay auditorías guardadas en este dispositivo.</p>';
+  mostrar('historial');
+}
+function cargarDelHistorial(i) {
+  const lista = leerLocal('auditorias') || [];
+  const a = lista[lista.length - 1 - i];
+  if (a) { estado = a; mostrar('resultado'); }
+}
+
+// ── almacenamiento local ──
+function leerLocal(clave) { try { return JSON.parse(localStorage.getItem(clave)); } catch (e) { return null; } }
+function guardarLocal(clave, valor) {
+  if (clave === 'auditorias') {
+    const lista = leerLocal('auditorias') || [];
+    const existe = lista.findIndex(x => x.predio && x.predio.predio === valor.predio.predio);
+    if (existe >= 0) lista[existe] = valor; else lista.push(valor);
+    localStorage.setItem('auditorias', JSON.stringify(lista));
+  } else {
+    localStorage.setItem(clave, JSON.stringify(valor));
+  }
+}
+
+// registrar service worker (instalación PWA)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
