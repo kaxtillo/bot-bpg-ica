@@ -16,18 +16,22 @@ Evaluación de **62 criterios** organizados en 10 secciones (Sanidad Animal, Ide
 
 ## 🔄 Flujo de trabajo completo
 
+**3 vías de entrada, 1 solo punto de escritura** — todas convergen en el mismo pipeline de validación y cálculo (sin duplicados, umbrales únicos):
+
 ```
-📱 App Android (offline) / 🖥️ Terminal / 🤖 Bot Telegram
-        │  respuestas SI/NO/NA de los 62 criterios
-        ▼
-   Cálculo automático (F/My/Mn + concepto)
-        ▼
-   🗄️ BD SQLite de consolidación
-        ├── 📊 Google Sheets (registro oficial, sincronización bidireccional)
-        └── 🗺️ Mapa UMap (GeoJSON + cron horario)
+📱 App Android (APK, offline)  ─┐
+🤖 Bot Telegram                ─┼→  guardar_auditoria.py (validación + cálculo F/My/Mn)
+🖥️ Auditor local (terminal)    ─┘          ↓
+                                   🗄️ BD SQLite (único punto de escritura)
+                                    ├── 📊 Google Sheets (registro oficial, sincronización bidireccional)
+                                    └── 🗺️ Mapa UMap (GeoJSON + cron horario)
 ```
 
-**En campo (sin señal):** el auditor responde los 62 criterios en la app del celular → al tener señal envía el JSON al bot de Telegram → todo se consolida automáticamente.
+- **App Android:** guarda en el dispositivo sin señal; al estar online sincroniza por wifi al `servidor_api.py` (POST `/api/auditorias`)
+- **Bot Telegram:** auditoría conversacional con cálculo y guardado automáticos
+- **Auditor local:** terminal o formulario CSV, 100% sin internet
+
+**En campo (sin señal):** el auditor responde los 62 criterios en la app del celular → al tener señal pulsa "Sincronizar" → todo se consolida automáticamente (BD → hoja → mapa).
 
 ---
 
@@ -79,6 +83,8 @@ Los predios se publican como GeoJSON en `mapa/predios_bpg_ica.geojson` y se carg
 | `consultar.py` | Consultas y seguimiento (resumen, detalle, hallazgos) |
 | `importar_hoja.py` | Importa un CSV exportado de la hoja (idempotente) |
 | `sincronizar_hoja.py` | Sincronización bidireccional con Google Sheets |
+| `servidor_api.py` | API local (POST /api/auditorias) — la app Android sincroniza aquí |
+| `recalcular_umbrales.py` | Recalcula auditorías con los umbrales oficiales (F 100 / My 80 / Mn 60) |
 | `generar_geojson.py` | Genera el GeoJSON de predios para el mapa |
 | `generar_pwa.py` | Regenera la PWA con los criterios de la BD |
 | `subir_mapa.sh` | Sube el GeoJSON a GitHub (cron horario) |
