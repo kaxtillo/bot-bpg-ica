@@ -6,9 +6,9 @@ Evaluación de **62 criterios** organizados en 10 secciones (Sanidad Animal, Ide
 
 | Tipo | Umbral |
 |---|---|
-| Fundamentales (F) | ≥ 90% |
+| Fundamentales (F) | 100% |
 | Mayores (My) | ≥ 80% |
-| Menores (Mn) | ≥ 70% |
+| Menores (Mn) | ≥ 60% |
 
 > Los criterios **NA (No Aplica) se excluyen del denominador**. El concepto final es **Certificable** o **Aplazado**.
 
