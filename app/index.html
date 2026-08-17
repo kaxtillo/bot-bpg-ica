@@ -120,6 +120,14 @@
       <div id="lista-historial"></div>
       <button class="btn btn-secundario" onclick="volverInicio()">← Volver</button>
     </div>
+    <div class="card" style="border:2px solid var(--verde2);">
+      <h2 style="margin:0 0 4px;font-size:17px;">🔄 Sincronizar con la base de datos</h2>
+      <p style="margin:0 0 8px;color:#5a6f66;font-size:13px;">Con el celular en la misma red wifi de la laptop, envía las auditorías pendientes directo a la BD (sin archivos).</p>
+      <label>Dirección del servidor (laptop)</label>
+      <input id="f-url" placeholder="http://192.168.80.25:8200" value="http://192.168.80.25:8200">
+      <button class="btn btn-primario" onclick="sincronizar()">📤 Sincronizar pendientes</button>
+      <div id="sync-resultado" style="margin-top:10px;font-size:14px;"></div>
+    </div>
   </section>
 </main>
 <div id="toast"></div>
@@ -271,6 +279,43 @@ function cargarDelHistorial(i) {
   const lista = leerLocal('auditorias') || [];
   const a = lista[lista.length - 1 - i];
   if (a) { estado = a; mostrar('resultado'); }
+}
+
+async function sincronizar() {
+  const url = ($('f-url').value || '').trim().replace(/\/+$/, '');
+  const caja = $('sync-resultado');
+  if (!url) { caja.innerHTML = '<p style="color:#c62828;">⚠️ Escriba la dirección del servidor.</p>'; return; }
+  const lista = leerLocal('auditorias') || [];
+  const pendientes = lista.filter(a => !a.sincronizada);
+  if (!pendientes.length) { caja.innerHTML = '<p style="color:#2e7d32;">✅ Todo sincronizado — sin pendientes.</p>'; return; }
+  caja.innerHTML = '<p>📤 Enviando ' + pendientes.length + ' auditoría(s) a ' + url + '…</p>';
+  let ok = 0, err = 0;
+  for (const a of pendientes) {
+    const detalle = {};
+    CRITERIOS.forEach(c => { const r = a.respuestas[c.id]; if (r) detalle[c.id] = r; });
+    const p = a.predio;
+    const payload = {
+      predio: p.predio, propietario: p.propietario, identificacion: p.cedula,
+      telefono: p.telefono, departamento: 'Cauca', municipio: p.municipio,
+      vereda: p.vereda, gps: p.gps, fecha: new Date().toISOString().slice(0, 10),
+      detalle_puntos: detalle
+    };
+    try {
+      const r = await fetch(url + '/api/auditorias', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if (r.ok && j.ok) { a.sincronizada = true; ok++; }
+      else { err++; caja.innerHTML += '<p style="color:#c62828;">❌ ' + (p.predio || '').toUpperCase() + ': ' + (j.error || 'error del servidor') + '</p>'; }
+    } catch (e) {
+      err++;
+      caja.innerHTML += '<p style="color:#c62828;">❌ ' + (p.predio || '').toUpperCase() + ': sin conexión (' + url + ')</p>';
+    }
+  }
+  localStorage.setItem('auditorias', JSON.stringify(lista));
+  caja.innerHTML += '<p style="color:#2e7d32;font-weight:700;">✅ ' + ok + ' sincronizada(s)' + (err ? ' · ❌ ' + err + ' con error' : '') + '</p>';
+  mostrarHistorial();
 }
 
 // ── almacenamiento local ──
