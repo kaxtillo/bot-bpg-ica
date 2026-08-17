@@ -14,23 +14,40 @@ Evaluación de **62 criterios** organizados en 10 secciones (Sanidad Animal, Ide
 
 ---
 
+## 🔄 Flujo de trabajo completo
+
+```
+📱 App Android (offline) / 🖥️ Terminal / 🤖 Bot Telegram
+        │  respuestas SI/NO/NA de los 62 criterios
+        ▼
+   Cálculo automático (F/My/Mn + concepto)
+        ▼
+   🗄️ BD SQLite de consolidación
+        ├── 📊 Google Sheets (registro oficial, sincronización bidireccional)
+        └── 🗺️ Mapa UMap (GeoJSON + cron horario)
+```
+
+**En campo (sin señal):** el auditor responde los 62 criterios en la app del celular → al tener señal envía el JSON al bot de Telegram → todo se consolida automáticamente.
+
+---
+
 ## 📦 Componentes
 
-### 1. 🤖 Bot de Telegram (@Auditor_ICA_bot)
+### 1. 📱 App Android "Auditor BPG" (`app/`)
+Aplicación **PWA + APK instalable** que funciona **sin internet**:
+- Registro del predio + 62 preguntas con botones grandes SI/NO/NA
+- Cálculo local del resultado (porcentajes y concepto)
+- Guarda auditorías en el dispositivo y exporta el JSON
+- **APK** compilado automáticamente con **GitHub Actions** (`.github/workflows/build-apk.yml`): `npm install → cap add android → cap sync → gradlew assembleDebug`, el artefacto `app-debug.apk` se publica en cada push a `main`
+
+### 2. 🤖 Bot de Telegram (@Auditor_ICA_bot)
 Ejecuta auditorías conversacionales: registro del predio (7 datos) + las 62 preguntas una a una (SI/NO/NA), con cálculo y guardado automáticos. Corre sobre [Hermes Agent](https://hermes-agent.nousresearch.com/).
 
-### 2. 🖥️ Auditoría local sin internet (`auditar.py`)
+### 3. 🖥️ Auditoría local sin internet (`auditar.py`)
 Auditoría 100% local, sin depender de IA online:
 - **Modo interactivo:** `python3 auditar.py` — pregunta los 7 datos y las 62 preguntas en la terminal
 - **Modo formulario:** `python3 auditar.py --archivo formulario.csv` — procesa un formulario llenado en campo (Excel/imprimible)
 - `Ctrl+C` guarda el progreso parcial; se retoma después
-
-### 3. 📱 App Android (PWA "Auditor BPG")
-Aplicación web instalable (`app/`) que funciona **sin internet**:
-- Registro del predio + 62 preguntas con botones grandes SI/NO/NA
-- Cálculo local del resultado (porcentajes y concepto)
-- Guarda auditorías en el dispositivo y exporta el JSON
-- El JSON se envía al bot de Telegram para consolidar
 
 ### 4. 🗄️ Base de datos de consolidación (SQLite)
 `auditorias_bpg.db` con 4 tablas:
@@ -40,7 +57,7 @@ Aplicación web instalable (`app/`) que funciona **sin internet**:
 - `respuestas` — detalle SI/NO/NA por criterio y auditoría
 
 ### 5. 📊 Google Sheets (registro oficial)
-Sincronización **bidireccional** con la hoja de cálculo oficial:
+Sincronización **bidireccional** con la hoja de cálculo oficial (84 columnas, criterios `C1.1|F`):
 ```bash
 python3 sincronizar_hoja.py          # pull (hoja → BD) + push (BD → hoja)
 python3 sincronizar_hoja.py --pull   # solo leer la hoja
@@ -63,20 +80,23 @@ Los predios se publican como GeoJSON en `mapa/predios_bpg_ica.geojson` y se carg
 | `importar_hoja.py` | Importa un CSV exportado de la hoja (idempotente) |
 | `sincronizar_hoja.py` | Sincronización bidireccional con Google Sheets |
 | `generar_geojson.py` | Genera el GeoJSON de predios para el mapa |
+| `generar_pwa.py` | Regenera la PWA con los criterios de la BD |
 | `subir_mapa.sh` | Sube el GeoJSON a GitHub (cron horario) |
 | `backup_bot.sh` | Respaldo completo del sistema |
-| `generar_pwa.py` | Regenera la PWA con los criterios de la BD |
 
 ## 📁 Estructura
 
 ```
 ├── app/                    # PWA "Auditor BPG" (instalable en Android)
 ├── mapa/                   # GeoJSON de predios (alimenta el mapa UMap)
-├── 00_Lista_Chequeo_Normativa/  …  10_Personal/   # Formatos NLM (14 PDFs)
+├── .github/workflows/      # Build automático del APK (GitHub Actions)
+├── capacitor.config.json   # Config de Capacitor (webDir: app)
+├── package.json            # Dependencias de la compilación Android
+├── 00_Lista_Chequeo_Normativa/ … 10_Personal/   # Formatos NLM (14 PDFs)
 ├── auditorias/             # JSON de auditorías históricas
 ├── memory/                 # Memoria del bot anterior (OpenClaw)
 ├── AGENTS.md · SOUL.md · IDENTITY.md   # Configuración del agente
-├── auditar.py · consultar.py · …       # Scripts del sistema
+└── *.py · *.sh             # Scripts del sistema
 ```
 
 ## 🚀 Uso rápido
@@ -104,6 +124,7 @@ python3 generar_geojson.py
 
 - **Nunca subir credenciales al repositorio.** Los archivos `credentials.json`, `token_final.json` y `oauth_state.json` (OAuth de Google) están excluidos vía `.gitignore` — si aparecen, revocar el token en [myaccount.google.com/security](https://myaccount.google.com/security).
 - Las claves API viven en variables de entorno, no en el código.
+- El APK generado es versión **debug** (firma de desarrollo) — para distribución pública se requiere una firma de release (keystore propio).
 
 ## 📄 Normativa
 
