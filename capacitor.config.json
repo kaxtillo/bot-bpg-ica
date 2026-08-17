@@ -1,0 +1,9 @@
+{
+  "appId": "com.auditor.bpg",
+  "appName": "Auditor BPG",
+  "webDir": "app",
+  "backgroundColor": "#0b3d2e",
+  "android": {
+    "allowMixedContent": false
+  }
+}
