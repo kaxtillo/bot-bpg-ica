@@ -4,13 +4,16 @@
 
 Los criterios **NA** (No Aplica) se **excluyen del denominador** para el cálculo del porcentaje de cumplimiento.
 
-- **Fundamentales (F):** mínimo 90% — excluyendo NA
+- **Fundamentales (F):** 100% — excluyendo NA (todos los criterios fundamentales deben cumplirse)
 - **Mayores (My):** mínimo 80% — excluyendo NA
-- **Menores (Mn):** mínimo 70% — excluyendo NA
+- **Menores (Mn):** mínimo 60% — excluyendo NA
 
 **Concepto:**
 - **Certificable:** cumple los tres umbrales
 - **Aplazado:** no cumple uno o más umbrales
+
+> ⚠️ El cálculo, porcentajes y concepto los realiza SIEMPRE el script
+> `guardar_auditoria.py` — nunca calcular a mano.
 
 ## SECCIÓN 1: SANIDAD ANIMAL
 
