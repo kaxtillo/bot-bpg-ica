@@ -72,6 +72,7 @@
       <label>GPS (lat, lon)</label><input id="f-gps" placeholder="Ej. 2.597141, -76.614733">
       <button class="btn btn-primario" onclick="iniciarAuditoria()">▶ Iniciar auditoría (62 criterios)</button>
       <button class="btn btn-secundario" onclick="mostrarHistorial()" style="margin-top:10px;">📁 Auditorías guardadas</button>
+      <button class="btn btn-secundario" onclick="mostrar('acerca')" style="margin-top:6px;">ℹ️ Acerca de</button>
     </div>
   </section>
 
@@ -130,6 +131,26 @@
       <div id="sync-resultado" style="margin-top:10px;font-size:14px;"></div>
     </div>
   </section>
+
+  <!-- PANTALLA: ACERCA DE -->
+  <section id="pantalla-acerca" class="oculto">
+    <div class="card">
+      <h2 style="margin:0 0 6px;font-size:18px;">ℹ️ Acerca de Auditor BPG</h2>
+      <p style="margin:0 0 10px;color:#5a6f66;font-size:13px;">Auditoría de Buenas Prácticas Ganaderas — Res. 067449 · Forma 3-852 V6</p>
+      <div class="fila-hist"><span>Versión</span><b>v6.0</b></div>
+      <div class="fila-hist"><span>Fecha</span><b>24/08/2026</b></div>
+      <div class="fila-hist"><span>Umbrales</span><b>F 100% · My 80% · Mn 60%</b></div>
+      <h3 style="margin:14px 0 6px;font-size:15px;color:#0b3d2e;">Cambios de esta versión</h3>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#2d3a35;">
+        <li>🔍 Botón <b>Ver predios registrados</b> en el resultado</li>
+        <li>🔄 Reset automático al terminar (campos vacíos)</li>
+        <li>🪪 Campo <b>Identificación</b> (antes Cédula)</li>
+        <li>🌐 Sincronización por HTTP habilitada (WiFi)</li>
+        <li>📊 Umbrales oficiales Forma 3-852 V6</li>
+      </ul>
+      <button class="btn btn-secundario" onclick="volverInicio()" style="margin-top:14px;">← Volver</button>
+    </div>
+  </section>
 </main>
 <div id="toast"></div>
 
@@ -142,7 +163,7 @@ let estado = null; // {idx, respuestas:{}, predio:{}}
 
 function $(id) { return document.getElementById(id); }
 function mostrar(p) {
-  ['inicio','cuestionario','resultado','historial'].forEach(x => $('pantalla-'+x).classList.toggle('oculto', x !== p));
+  ['inicio', 'cuestionario', 'resultado', 'historial', 'acerca'].forEach(x => $('pantalla-' + x).classList.toggle('oculto', x !== p));
   window.scrollTo(0,0);
 }
 function toast(msg) {
