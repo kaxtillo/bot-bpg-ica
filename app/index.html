@@ -65,7 +65,7 @@
       <p style="margin:0 0 6px;color:#5a6f66;font-size:13px;">Complete los datos antes de iniciar la auditoría.</p>
       <label>Nombre del predio *</label><input id="f-predio" placeholder="Ej. El Rosal">
       <label>Propietario *</label><input id="f-propietario" placeholder="Nombre completo">
-      <label>Cédula</label><input id="f-cedula" inputmode="numeric" placeholder="Número de cédula">
+      <label>Identificación</label><input id="f-cedula" inputmode="numeric" placeholder="Número de identificación">
       <label>Municipio *</label><input id="f-municipio" placeholder="Ej. Cajibío">
       <label>Vereda</label><input id="f-vereda" placeholder="Ej. La Unión">
       <label>Teléfono</label><input id="f-telefono" inputmode="tel" placeholder="Ej. 3100000000">
@@ -109,6 +109,7 @@
       <div id="r-hallazgos" style="text-align:left;margin-top:12px;"></div>
       <button class="btn btn-primario" onclick="exportarJSON()">📤 Exportar JSON (enviar al bot)</button>
       <button class="btn btn-secundario" onclick="compartirResultado()">📲 Compartir archivo</button>
+      <button class="btn btn-secundario" onclick="mostrarHistorial()">📁 Ver predios registrados</button>
       <button class="btn btn-secundario" onclick="nuevaAuditoria()">+ Nueva auditoría</button>
     </div>
   </section>
@@ -259,7 +260,12 @@ async function compartirResultado() {
   }
 }
 
-function nuevaAuditoria() { estado = null; mostrar('inicio'); }
+function nuevaAuditoria() {
+  estado = null;
+  ['f-predio', 'f-propietario', 'f-cedula', 'f-municipio', 'f-vereda', 'f-telefono', 'f-gps']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  mostrar('inicio');
+}
 function volverInicio() { mostrar('inicio'); }
 
 function mostrarHistorial() {
