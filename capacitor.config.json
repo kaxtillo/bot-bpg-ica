@@ -4,6 +4,7 @@
   "webDir": "app",
   "backgroundColor": "#0b3d2e",
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": true,
+    "cleartext": true
   }
 }
