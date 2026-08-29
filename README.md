@@ -16,13 +16,13 @@ Evaluación de **62 criterios** organizados en 10 secciones (Sanidad Animal, Ide
 
 ## 🔄 Flujo de trabajo completo
 
-**3 vías de entrada, 1 solo punto de escritura** — todas convergen en el mismo pipeline de validación y cálculo (sin duplicados, umbrales únicos):
+**4 vías de entrada, 1 solo punto de escritura** — todas convergen en el mismo pipeline de validación y cálculo (sin duplicados, umbrales únicos):
 
 ```
 📱 App Android (APK, offline)  ─┐
 🤖 Bot Telegram                ─┼→  guardar_auditoria.py (validación + cálculo F/My/Mn)
-🖥️ Auditor local (terminal)    ─┘          ↓
-                                   🗄️ BD SQLite (único punto de escritura)
+🖥️ Auditor local (terminal)    ─┤          ↓
+📋 KoboToolbox (Android/web)   ─┘   🗄️ BD SQLite (único punto de escritura)
                                     ├── 📊 Google Sheets (registro oficial, sincronización bidireccional)
                                     └── 🗺️ Mapa UMap (GeoJSON + cron horario)
 ```
@@ -30,6 +30,7 @@ Evaluación de **62 criterios** organizados en 10 secciones (Sanidad Animal, Ide
 - **App Android:** guarda en el dispositivo sin señal; al estar online sincroniza por wifi al `servidor_api.py` (POST `/api/auditorias`)
 - **Bot Telegram:** auditoría conversacional con cálculo y guardado automáticos
 - **Auditor local:** terminal o formulario CSV, 100% sin internet
+- **KoboToolbox:** formulario de encuesta (62 criterios) con calificación automática; el cron `procesar_kobo.py` descarga las respuestas por API y las consolida en la BD
 
 **En campo (sin señal):** el auditor responde los 62 criterios en la app del celular → al tener señal pulsa "Sincronizar" → todo se consolida automáticamente (BD → hoja → mapa).
 
@@ -84,6 +85,8 @@ Los predios se publican como GeoJSON en `mapa/predios_bpg_ica.geojson` y se carg
 | `importar_hoja.py` | Importa un CSV exportado de la hoja (idempotente) |
 | `sincronizar_hoja.py` | Sincronización bidireccional con Google Sheets |
 | `servidor_api.py` | API local (POST /api/auditorias) — la app Android sincroniza aquí |
+| `procesar_kobo.py` | KoboToolbox → BD: descarga las respuestas del formulario por API y las consolida (cron cada 15 min) |
+| `procesar_respuestas_form.py` | Formulario de Google → BD: lee las respuestas del form y las consolida (cron cada 15 min) |
 | `recalcular_umbrales.py` | Recalcula auditorías con los umbrales oficiales (F 100 / My 80 / Mn 60) |
 | `generar_geojson.py` | Genera el GeoJSON de predios para el mapa |
 | `generar_pwa.py` | Regenera la PWA con los criterios de la BD |
