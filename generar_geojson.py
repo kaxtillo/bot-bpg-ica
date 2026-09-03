@@ -18,7 +18,7 @@ SALIDA = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser(
 
 QUERY = """
     SELECT p.nombre, p.propietario, p.municipio, p.vereda, p.latitud, p.longitud,
-           a.fecha, a.concepto, a.f_pct, a.my_pct, a.mn_pct,
+           a.fecha, a.concepto, a.f_pct, a.my_pct, a.mn_pct, a.observaciones,
            (SELECT group_concat(r.criterio_id || ' ' || c.nombre, '; ')
               FROM respuestas r JOIN criterios c ON c.id=r.criterio_id
               WHERE r.auditoria_id=a.id AND r.respuesta='NO') AS hallazgos
@@ -34,7 +34,7 @@ COLOR = {"Certificable": "#2e7d32", "Aplazado": "#c62828"}
 def main():
     con = sqlite3.connect(DB)
     features = []
-    for nombre, prop, muni, vereda, lat, lon, fecha, concepto, fp, mp, mnp, hallazgos in con.execute(QUERY):
+    for nombre, prop, muni, vereda, lat, lon, fecha, concepto, fp, mp, mnp, obs, hallazgos in con.execute(QUERY):
         if lat is None or lon is None:
             continue
         color = COLOR.get(concepto or "", "#1565c0")
@@ -45,7 +45,9 @@ def main():
             f"<b style='color:{color}'>{concepto or '—'}</b> ({fecha or '—'})<br/>"
             f"F {fp}% · My {mp}% · Mn {mnp}%"
         )
-        if hallazgos:
+        if obs:
+            desc += f"<br/><i>Obs: {obs}</i>"
+        elif hallazgos:
             desc += f"<br/><i>Hallazgos: {hallazgos}</i>"
         features.append({
             "type": "Feature",
@@ -60,6 +62,7 @@ def main():
                 "My": f"{mp}%" if mp is not None else "",
                 "Mn": f"{mnp}%" if mnp is not None else "",
                 "hallazgos": hallazgos or "",
+                "observaciones": obs or "",
                 "marker-color": color,
                 "description": desc,
             },
