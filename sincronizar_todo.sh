@@ -13,6 +13,7 @@ estado() {  # conteo predios|auditorias
 }
 ANTES=$(estado)
 GEOG_ANTES=$(md5sum predios_bpg_ica.geojson 2>/dev/null | cut -d' ' -f1)
+DASH_ANTES=$(md5sum Dashboard_Auditorias_BPG_ICA.html 2>/dev/null | cut -d' ' -f1)
 
 # 1. BD ↔ Google Sheets
 $PY sincronizar_hoja.py >/tmp/sync_hoja.log 2>&1
@@ -20,6 +21,10 @@ $PY sincronizar_hoja.py >/tmp/sync_hoja.log 2>&1
 # 2. BD → GeoJSON → subir mapa (solo si cambió)
 $PY generar_geojson.py >/dev/null 2>&1
 GEOG_DESPUES=$(md5sum predios_bpg_ica.geojson 2>/dev/null | cut -d' ' -f1)
+
+# 3. Regenerar dashboard HTML (determinista: solo cambia si cambian los datos)
+$PY generar_dashboard.py >/dev/null 2>&1
+DASH_DESPUES=$(md5sum Dashboard_Auditorias_BPG_ICA.html 2>/dev/null | cut -d' ' -f1)
 
 # 3. Respaldo diario
 HOY=$(date +%Y%m%d)
@@ -37,6 +42,9 @@ fi
 if [ "$GEOG_ANTES" != "$GEOG_DESPUES" ]; then
     bash subir_mapa.sh >/dev/null 2>&1
     MENSAJES+="🗺️ Mapa uMap actualizado ($N_PREDIOS predios)\n"
+fi
+if [ "$DASH_ANTES" != "$DASH_DESPUES" ]; then
+    MENSAJES+="📈 Dashboard HTML actualizado\n"
 fi
 
 if [ -n "$MENSAJES" ]; then
