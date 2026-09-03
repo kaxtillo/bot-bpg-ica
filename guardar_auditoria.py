@@ -106,26 +106,32 @@ def main():
     if not nombre:
         print("❌ Falta el campo 'predio'.", file=sys.stderr)
         sys.exit(2)
-    con.execute(
-        """INSERT INTO predios (nombre, propietario, identificacion, telefono, email,
-           departamento, municipio, vereda, latitud, longitud, rspp, especie, fin_zootecnico,
-           produccion, total_animales)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-           ON CONFLICT(nombre) DO UPDATE SET propietario=excluded.propietario,
-             identificacion=excluded.identificacion, telefono=excluded.telefono,
-             email=excluded.email, departamento=excluded.departamento,
-             municipio=excluded.municipio, vereda=excluded.vereda,
-             latitud=excluded.latitud, longitud=excluded.longitud, rspp=excluded.rspp,
-             especie=excluded.especie, fin_zootecnico=excluded.fin_zootecnico,
-             produccion=excluded.produccion, total_animales=excluded.total_animales""",
-        (
-            nombre, d.get("propietario"), d.get("identificacion"), d.get("telefono"),
-            d.get("email"), d.get("departamento"), d.get("municipio"), d.get("vereda"),
-            d.get("latitud"), d.get("longitud"), d.get("rspp"), d.get("especie"),
-            d.get("fin_zootecnico"), d.get("produccion"), d.get("total_animales"),
-        ),
-    )
-    pid = con.execute("SELECT id FROM predios WHERE nombre=?", (nombre,)).fetchone()[0]
+    # ── upsert predio (case-insensitive para evitar duplicados por mayúsculas) ──
+    nombre = (d.get("predio") or "").strip().upper()
+    if not nombre:
+        print("❌ Falta el campo 'predio'.", file=sys.stderr)
+        sys.exit(2)
+    campos = ("propietario, identificacion, telefono, email, departamento, municipio, "
+              "vereda, latitud, longitud, rspp, especie, fin_zootecnico, produccion, total_animales")
+    vals = (d.get("propietario"), d.get("identificacion"), d.get("telefono"), d.get("email"),
+            d.get("departamento"), d.get("municipio"), d.get("vereda"), d.get("latitud"),
+            d.get("longitud"), d.get("rspp"), d.get("especie"), d.get("fin_zootecnico"),
+            d.get("produccion"), d.get("total_animales"))
+    # buscar existente ignorando mayúsculas (evita La Vega vs LA VEGA)
+    existente = con.execute(
+        "SELECT id FROM predios WHERE UPPER(TRIM(nombre))=? LIMIT 1", (nombre,)
+    ).fetchone()
+    if existente:
+        pid = existente[0]
+        con.execute(
+            f"UPDATE predios SET nombre=?, {campos} WHERE id=?", (nombre,) + vals + (pid,)
+        )
+    else:
+        con.execute(
+            f"INSERT INTO predios (nombre, {campos}) VALUES (?{',?' * 14})",
+            (nombre,) + vals,
+        )
+        pid = con.lastrowid
 
     fecha = d.get("fecha") or date.today().isoformat()
     # si ya existe auditoría con misma fecha y concepto → actualizar; si no → nueva
