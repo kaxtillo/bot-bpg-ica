@@ -44,7 +44,8 @@ if [ "$GEOG_ANTES" != "$GEOG_DESPUES" ]; then
     MENSAJES+="🗺️ Mapa uMap actualizado ($N_PREDIOS predios)\n"
 fi
 if [ "$DASH_ANTES" != "$DASH_DESPUES" ]; then
-    MENSAJES+="📈 Dashboard HTML actualizado\n"
+    bash subir_dashboard.sh >/dev/null 2>&1
+    MENSAJES+="📈 Dashboard actualizado y publicado en GitHub Pages\n"
 fi
 
 if [ -n "$MENSAJES" ]; then
