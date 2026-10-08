@@ -127,11 +127,11 @@ def main():
             f"UPDATE predios SET nombre=?, {campos} WHERE id=?", (nombre,) + vals + (pid,)
         )
     else:
-        con.execute(
+        cur = con.execute(
             f"INSERT INTO predios (nombre, {campos}) VALUES (?{',?' * 14})",
             (nombre,) + vals,
         )
-        pid = con.lastrowid
+        pid = cur.lastrowid
 
     fecha = d.get("fecha") or date.today().isoformat()
     # si ya existe auditoría con misma fecha y concepto → actualizar; si no → nueva
