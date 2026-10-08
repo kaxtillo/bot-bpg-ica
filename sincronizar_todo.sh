@@ -16,7 +16,14 @@ GEOG_ANTES=$(md5sum predios_bpg_ica.geojson 2>/dev/null | cut -d' ' -f1)
 DASH_ANTES=$(md5sum Dashboard_Auditorias_BPG_ICA.html 2>/dev/null | cut -d' ' -f1)
 
 # 1. BD ↔ Google Sheets
-$PY sincronizar_hoja.py >/tmp/sync_hoja.log 2>&1
+SYNC_HOJA=$($PY sincronizar_hoja.py 2>&1)
+echo "$SYNC_HOJA" > /tmp/sync_hoja.log
+case "$SYNC_HOJA" in
+    *"Error"*|*"error"*|*"❌"*) MENSAJES+="⚠️ Falló la sincronización con Google Sheets (ver /tmp/sync_hoja.log)\n" ;;
+esac
+
+# 1b. Seguimiento de hallazgos (crea filas para hallazgos nuevos; no pisa estados)
+$PY seguimiento.py sync >/tmp/seguimiento_sync.log 2>&1
 
 # 2. BD → GeoJSON → subir mapa (solo si cambió)
 $PY generar_geojson.py >/dev/null 2>&1
@@ -44,8 +51,12 @@ if [ "$GEOG_ANTES" != "$GEOG_DESPUES" ]; then
     MENSAJES+="🗺️ Mapa uMap actualizado ($N_PREDIOS predios)\n"
 fi
 if [ "$DASH_ANTES" != "$DASH_DESPUES" ]; then
-    bash subir_dashboard.sh >/dev/null 2>&1
-    MENSAJES+="📈 Dashboard actualizado y publicado en GitHub Pages\n"
+    R=0; SALIDA_DASH=$(bash subir_dashboard.sh 2>&1) || R=$?
+    if [ "$R" != "0" ] || echo "$SALIDA_DASH" | grep -qiE 'err|error|401|403'; then
+        MENSAJES+="⚠️ El dashboard cambió pero NO se pudo publicar: $(echo "$SALIDA_DASH" | tail -1)\n"
+    else
+        MENSAJES+="📈 Dashboard actualizado y publicado en GitHub Pages\n"
+    fi
 fi
 
 if [ -n "$MENSAJES" ]; then
