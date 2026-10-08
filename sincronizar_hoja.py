@@ -13,6 +13,7 @@ Sincronización bidireccional entre la hoja de Google Sheets
 Uso: python3 sincronizar_hoja.py [--push] [--pull]
 """
 import csv
+import glob
 import json
 import os
 import sqlite3
@@ -20,7 +21,56 @@ import subprocess
 import sys
 
 HERMES_HOME = os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))
-GAPI = ["python", os.path.join(HERMES_HOME, "skills/productivity/google-workspace/scripts/google_api.py")]
+
+
+def _resolver_google_api():
+    """Localiza google_api.py del skill google-workspace.
+
+    La skill puede vivir en skills/, estar archivada o venir empaquetada con
+    hermes-agent — si se mueve, el sync fallaba en silencio con 'No such file'.
+    Se prueban rutas conocidas y, como último recurso, una búsqueda glob.
+    """
+    candidatos = [
+        os.path.join(HERMES_HOME, "skills/productivity/google-workspace/scripts/google_api.py"),
+        os.path.join(HERMES_HOME, "skills/.archive/google-workspace/scripts/google_api.py"),
+        os.path.join(HERMES_HOME, "hermes-agent/skills/productivity/google-workspace/scripts/google_api.py"),
+    ]
+    for c in candidatos:
+        if os.path.exists(c):
+            return c
+    for patron in (
+        os.path.join(HERMES_HOME, "skills/*/google-workspace/scripts/google_api.py"),
+        os.path.join(HERMES_HOME, "skills/.*/google-workspace/scripts/google_api.py"),
+        os.path.join(HERMES_HOME, "**/google-workspace/scripts/google_api.py"),
+    ):
+        for c in glob.glob(patron, recursive=True):
+            return c
+    return candidatos[0]
+
+
+def _python_con_google():
+    """Intérprete que SÍ tiene google-api-python-client.
+
+    El `python3` del sistema no la trae (solo el venv de hermes), así que invocar
+    'python' fallaba con ModuleNotFoundError y el sync moría en silencio.
+    """
+    for cand in (sys.executable, os.path.expanduser("~/.hermes/hermes-agent/venv/bin/python"),
+                 "/home/hermes/.hermes/hermes-agent/venv/bin/python", "python3", "python"):
+        if not cand:
+            continue
+        try:
+            r = subprocess.run([cand, "-c", "import googleapiclient"],
+                               capture_output=True, timeout=40)
+            if r.returncode == 0:
+                return cand
+        except Exception:
+            continue
+    return sys.executable
+
+
+GOOGLE_API = _resolver_google_api()
+PY_GOOGLE = _python_con_google()
+GAPI = [PY_GOOGLE, GOOGLE_API]
 SHEET = "1_HLqkdv5EBvQzRF5iMfpAw6fUI96aTj9ROxkwPan4Eg"
 TAB = "Hoja 1"
 DB = os.path.expanduser("~/auditorias_bpg/auditorias_bpg.db")
