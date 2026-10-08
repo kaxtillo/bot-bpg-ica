@@ -17,5 +17,7 @@ req=urllib.request.Request("https://api.github.com/repos/kaxtillo/bot-bpg-ica/co
 try:
     urllib.request.urlopen(req); print("OK")
 except urllib.error.HTTPError as e:
-    print(f"ERR {e.code}")
+    detalle = e.read().decode()[:200]
+    print(f"ERR {e.code}: {detalle}")
+    sys.exit(1)
 PYEOF
