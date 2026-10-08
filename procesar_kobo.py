@@ -2,30 +2,44 @@
 """
 Integra KoboToolbox → Base de datos BPG ICA.
 
-Descarga las respuestas (submissions) del formulario de auditoría BPG desde
-la API de KoboToolbox, las convierte al formato de guardar_auditoria.py
-(detalle_puntos con SI/NO/NA + datos del predio) y consolida en la BD
+Descarga las respuestas (submissions) de los formularios de auditoría BPG desde
+la API de KoboToolbox, extrae SOLO los 62 criterios (c_1_1 … c_10_2) más los datos
+de identificación del predio, y consolida en la BD con guardar_auditoria.py
 (luego Google Sheets y mapa vía los flujos habituales).
+
+Soporta varios formularios (V1 y V2) con registro de procesadas INDEPENDIENTE
+por formulario, para que un formulario nuevo no se confunda con el histórico.
 
 Requisitos:
   - Token de API de KoboToolbox en ~/.hermes/.env como KOBO_TOKEN
     (kf.kobotoolbox.org → Cuenta → API Key)
-  - UID del formulario (el id "aqZR..." del formulario desplegado)
+  - UID(s) del formulario. Se configuran en FORMS o con la variable de entorno
+    KOBO_FORM_UIDS (uids separados por coma).
 
 Uso:
-  python3 procesar_kobo.py --ver       # listar submissions sin guardar
-  python3 procesar_kobo.py             # procesar y guardar las nuevas
+  python3 procesar_kobo.py --ver       # listar submissions de cada formulario, sin guardar
+  python3 procesar_kobo.py             # procesar y guardar las nuevas (silencio si no hay)
 """
-import base64, json, os, re, subprocess, sys, urllib.request
+import json, os, re, subprocess, sys, urllib.request
 
 BASE = os.path.expanduser("~/auditorias_bpg")
 GUARDAR = os.path.join(BASE, "guardar_auditoria.py")
 PROCESADAS = os.path.join(BASE, "kobo_submissions_procesadas.json")
 PY = "/home/hermes/.hermes/hermes-agent/venv/bin/python"
 
-# Configuración (ajustar)
-FORM_UID = os.environ.get("KOBO_FORM_UID", "aNVGYKhswB8hFBSArTh8b8")  # "Auditoría BPG"
-KOBO_API = os.environ.get("KOBO_API", "https://kc.kobotoolbox.org/api/v2")
+# ── Formularios soportados ────────────────────────────────────────────────
+# El registro de submissions procesadas es POR FORMULARIO (uid), de modo que
+# añadir un formulario nuevo no reprocesa ni pisa el histórico de otro.
+FORMS = [
+    {"uid": "aNVGYKhswB8hFBSArTh8b8", "label": "Auditoría BPG (V1)"},
+    {"uid": "a78ZWXkFgDUNVrDPtc44dG", "label": "Auditoría BPG ICA - V2"},
+]
+# Permite override total: KOBO_FORM_UIDS="uid1,uid2"
+_env_uids = os.environ.get("KOBO_FORM_UIDS") or os.environ.get("KOBO_FORM_UID")
+if _env_uids:
+    FORMS = [{"uid": u.strip(), "label": u.strip()} for u in _env_uids.split(",") if u.strip()]
+
+KOBO_API = os.environ.get("KOBO_API", "https://kf.kobotoolbox.org/api/v2")
 
 
 def leer_token():
@@ -36,8 +50,8 @@ def leer_token():
     return os.environ.get("KOBO_TOKEN", "")
 
 
-def get_submissions(token):
-    url = f"{KOBO_API}/assets/{FORM_UID}/data/?format=json&limit=500"
+def get_submissions(token, uid):
+    url = f"{KOBO_API}/assets/{uid}/data/?format=json&limit=500"
     req = urllib.request.Request(url, headers={"Authorization": "Token " + token})
     return json.loads(urllib.request.urlopen(req, timeout=60).read().decode())
 
@@ -59,6 +73,7 @@ def cid_desde_name(name):
 
 
 def a_payload(sub):
+    """Extrae SOLO los 62 criterios (c_X_Y) + datos de identificación del predio."""
     detalle = {}
     for k, v in sub.items():
         cid = cid_desde_name(k)
@@ -101,36 +116,79 @@ def a_payload(sub):
     return p
 
 
+def cargar_registro():
+    """{uid: [ids procesadas]}. Migra el formato antiguo (lista plana → primer formulario)."""
+    if not os.path.exists(PROCESADAS):
+        return {}
+    data = json.load(open(PROCESADAS))
+    proc = data.get("procesadas", [])
+    if isinstance(proc, dict):
+        return {k: [str(x) for x in v] for k, v in proc.items()}
+    # formato antiguo: lista plana → asignar al primer formulario (V1)
+    return {FORMS[0]["uid"]: [str(x) for x in proc]}
+
+
+def guardar_registro(reg):
+    json.dump({"procesadas": {uid: sorted(set(ids)) for uid, ids in reg.items()}},
+              open(PROCESADAS, "w"), indent=1)
+
+
 def main():
     token = leer_token()
     if not token:
         print("❌ Falta KOBO_TOKEN en ~/.hermes/.env"); return
-    if "--ver" in sys.argv:
-        data = get_submissions(token)
-        subs = data.get("results", [])
-        print(f"Submissions en KoboToolbox: {len(subs)}")
-        for s in subs:
-            print(f"  • {s.get('nombre_predio','?')} — {s.get('_id','')}")
+
+    ver = "--ver" in sys.argv
+    reg = cargar_registro()
+
+    if ver:
+        for f in FORMS:
+            try:
+                subs = get_submissions(token, f["uid"]).get("results", [])
+            except Exception as e:
+                print(f"⚠️  {f['label']} ({f['uid']}): error {e}"); continue
+            ya = set(reg.get(f["uid"], []))
+            print(f"\n=== {f['label']} ({f['uid']}) — {len(subs)} submission(s), "
+                  f"{len(subs) - len([s for s in subs if str(s.get('_id')) in ya])} nueva(s) ===")
+            for s in subs:
+                estado = "procesada" if str(s.get("_id")) in ya else "NUEVA"
+                crit = len([1 for k in s if re.search(r"c_\d+_\d+", k)])
+                print(f"  • [{estado}] {s.get('nombre_predio','?')} — {s.get('fecha','')} "
+                      f"— {crit} criterios — _id={s.get('_id')}")
         return
-    data = get_submissions(token)
-    subs = data.get("results", [])
-    ya = set(json.load(open(PROCESADAS)).get("procesadas", [])) if os.path.exists(PROCESADAS) else set()
-    nuevas = [s for s in subs if str(s.get("_id")) not in ya]
-    if not nuevas:
-        return  # silencio para cron
-    ok, err = 0, 0
-    for s in nuevas:
-        payload = a_payload(s)
-        tmp = f"/tmp/kobo_{s.get('_id')}.json"
-        json.dump(payload, open(tmp, "w"), ensure_ascii=False)
-        r = subprocess.run([PY, GUARDAR, tmp], capture_output=True, text=True)
-        if r.returncode == 0:
-            ya.add(str(s.get("_id"))); ok += 1
-            print(f"✅ {payload['predio']} guardado")
-        else:
-            err += 1; print(f"❌ {payload['predio']}: {r.stderr[-200:]}"); os.remove(tmp)
-    json.dump({"procesadas": sorted(ya)}, open(PROCESADAS, "w"))
-    print(f"Resumen: {ok} guardado(s) · {err} con error")
+
+    total_ok, total_err, hubo_nuevas = 0, 0, False
+    for f in FORMS:
+        try:
+            subs = get_submissions(token, f["uid"]).get("results", [])
+        except Exception as e:
+            print(f"⚠️  {f['label']}: error de descarga ({e})"); continue
+        ya = set(reg.get(f["uid"], []))
+        nuevas = [s for s in subs if str(s.get("_id")) not in ya]
+        if not nuevas:
+            continue
+        hubo_nuevas = True
+        for s in nuevas:
+            payload = a_payload(s)
+            if not payload["detalle_puntos"]:
+                continue  # sin criterios → no es una auditoría
+            tmp = f"/tmp/kobo_{f['uid']}_{s.get('_id')}.json"
+            json.dump(payload, open(tmp, "w"), ensure_ascii=False)
+            r = subprocess.run([PY, GUARDAR, tmp], capture_output=True, text=True)
+            if r.returncode == 0:
+                ya.add(str(s.get("_id"))); total_ok += 1
+                print(f"✅ {payload['predio']} guardado ({f['label']}, "
+                      f"{len(payload['detalle_puntos'])} criterios)")
+            else:
+                total_err += 1
+                print(f"❌ {payload['predio']} ({f['label']}): {r.stderr[-300:]}")
+                os.remove(tmp)
+        reg[f["uid"]] = sorted(ya)
+
+    guardar_registro(reg)
+    if hubo_nuevas:
+        print(f"Resumen: {total_ok} guardado(s) · {total_err} con error")
+    # si no hubo nada nuevo → silencio (apto para cron no_agent)
 
 
 if __name__ == "__main__":
