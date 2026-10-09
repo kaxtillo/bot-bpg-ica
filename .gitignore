@@ -48,3 +48,11 @@ venv/
 __pycache__/
 .cache/
 inbound/
+
+# Credenciales y artefactos: nunca al repo
+credentials.json
+token_final.json
+oauth_state.json
+google_token.json
+*.keystore
+*.apk
