@@ -19,6 +19,7 @@ import os
 import sqlite3
 import subprocess
 import sys
+import time
 
 HERMES_HOME = os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))
 
@@ -78,13 +79,28 @@ IMPORTADOR = os.path.expanduser("~/auditorias_bpg/importar_hoja.py")
 CSV_TMP = "/tmp/hoja_sync.csv"
 
 
-def descargar_hoja():
-    r = subprocess.run(GAPI + ["drive", "download", SHEET, "--export-mime", "text/csv", "--output", CSV_TMP],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        print("❌ Error descargando la hoja:", r.stderr[-300:])
-        sys.exit(1)
-    print("📥 Hoja descargada →", CSV_TMP)
+def descargar_hoja(intentos=3, espera=10):
+    """Descarga la hoja a CSV, con reintentos.
+
+    La primera corrida tras encender la máquina falla si la red todavía no está
+    lista (el timer es `Persistent=true`: recupera la corrida perdida al arrancar),
+    y eso dejaba el aviso "⚠️ Falló la sincronización con Google Sheets" aunque la
+    corrida siguiente funcionara. Reintentar con espera creciente lo resuelve.
+    """
+    ultimo = ""
+    for n in range(1, intentos + 1):
+        r = subprocess.run(GAPI + ["drive", "download", SHEET, "--export-mime", "text/csv",
+                                   "--output", CSV_TMP], capture_output=True, text=True)
+        if r.returncode == 0 and os.path.exists(CSV_TMP) and os.path.getsize(CSV_TMP) > 0:
+            print(f"📥 Hoja descargada → {CSV_TMP} (intento {n})")
+            return
+        ultimo = (r.stderr or r.stdout or "")[-300:]
+        if n < intentos:
+            pausa = espera * n
+            print(f"⚠️ Descarga falló (intento {n}/{intentos}); reintento en {pausa}s…")
+            time.sleep(pausa)
+    print("❌ Error descargando la hoja:", ultimo)
+    sys.exit(1)
 
 
 def importar_bd():
