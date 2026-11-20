@@ -82,6 +82,46 @@ def canon_municipio(v):
     return s
 
 
+def _plano(s):
+    """Minúsculas sin tildes ni signos, para comparar grafías."""
+    import re
+    import unicodedata
+    return re.sub(r"[^a-z0-9]", "",
+                  unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode().lower())
+
+
+VEREDAS = {
+    "launion": "La Unión", "launionbaja": "La Unión",
+    "senegueta": "Cenegueta", "cenegueta": "Cenegueta",   # grafía oficial: Cenegueta
+    "laclaudia": "La Claudia",
+    "cohetera": "Cohetera",
+    "urbano": "Urbano",
+    "piedradeleon": "Piedra de León",
+    "casasnuevas": "Casas Nuevas",
+    "sanmiguel": "San Miguel",
+    "potrerito": "Potrerito",
+    "paletara": "Paletará",
+    "elroble": "El Roble",
+    "campamento": "Campamento",
+    "cairo": "Cairo",
+}
+
+
+def canon_vereda(v):
+    """Devuelve la vereda en su grafía canónica; si no la conoce, la deja igual.
+
+    Igual que el municipio, la vereda es texto libre en el formulario y la app, así que
+    llegan 'La unión' / 'LA UNION' / 'Senegueta' (por 'Cenegueta'). Sin normalizar, el
+    informe y el filtro del dashboard parten la misma vereda en varios grupos.
+    """
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    return VEREDAS.get(_plano(s), s)
+
+
 def recalcular_auditoria(con, aid, tipos):
     """Recalcula % y concepto de una auditoría desde sus respuestas."""
     resp = dict(con.execute(
@@ -165,7 +205,7 @@ def main():
                  fila.get("Identificación") or fila.get("Identificacion") or None,
                  fila.get("Teléfono") or fila.get("Telefono") or None,
                  fila.get("Email") or None, fila.get("Departamento") or None,
-                 canon_municipio(fila.get("Municipio")), fila.get("Vereda") or None,
+                 canon_municipio(fila.get("Municipio")), canon_vereda(fila.get("Vereda")),
                  parse_float(fila.get("Latitud")), parse_float(fila.get("Longitud")),
                  fila.get("RSPP") or None, fila.get("Especie") or None,
                  fila.get("FinZootécnico") or fila.get("FinZootecnico") or None,
