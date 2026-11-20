@@ -123,8 +123,11 @@ def main():
     ).fetchone()
     if existente:
         pid = existente[0]
+        # OJO: en un UPDATE las columnas necesitan "=?": antes se interpolaba la lista
+        # de nombres tal cual y SQLite fallaba con "near ',': syntax error".
+        sets = ", ".join(f"{c.strip()}=?" for c in campos.split(","))
         con.execute(
-            f"UPDATE predios SET nombre=?, {campos} WHERE id=?", (nombre,) + vals + (pid,)
+            f"UPDATE predios SET nombre=?, {sets} WHERE id=?", (nombre,) + vals + (pid,)
         )
     else:
         cur = con.execute(
