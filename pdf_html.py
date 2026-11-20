@@ -72,7 +72,7 @@ def html_a_pdf(html, salida, preferido="auto"):
     if os.path.exists(salida):
         os.unlink(salida)
 
-    orden = (("navegador", _navegador), ("weasyprint", _weasyprint))
+    orden = (("weasyprint", _weasyprint), ("navegador", _navegador))
     if preferido == "navegador":
         orden = tuple(reversed(orden))
     for nombre, motor in orden:
