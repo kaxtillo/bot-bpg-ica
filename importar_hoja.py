@@ -53,6 +53,35 @@ def normalizar_respuesta(v):
     return None
 
 
+MUNICIPIOS = {"cajibio": "Cajibío", "cajibío": "Cajibío", "sotara": "Sotará", "sotará": "Sotará",
+              "purace": "Puracé", "puracé": "Puracé", "timbio": "Timbío", "timbío": "Timbío"}
+
+
+def canon_municipio(v):
+    """Devuelve el municipio en su grafía canónica.
+
+    El formulario de Kobo y la app dejan escribir el municipio a mano, así que
+    llegan variantes ('Cajibio', 'cajibío', 'CAJIBÍO'). Sin esto, la BD acumula
+    grafías distintas y el filtro del dashboard se parte en varios grupos.
+    """
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    clave = s.lower()
+    if clave in MUNICIPIOS:
+        return MUNICIPIOS[clave]
+    # sin tildes / con mayúsculas raras: comparar normalizado
+    import unicodedata
+    plano = unicodedata.normalize("NFKD", clave).encode("ascii", "ignore").decode().strip()
+    for k, canon in MUNICIPIOS.items():
+        kp = unicodedata.normalize("NFKD", k).encode("ascii", "ignore").decode().strip()
+        if plano == kp:
+            return canon
+    return s
+
+
 def recalcular_auditoria(con, aid, tipos):
     """Recalcula % y concepto de una auditoría desde sus respuestas."""
     resp = dict(con.execute(
@@ -136,7 +165,7 @@ def main():
                  fila.get("Identificación") or fila.get("Identificacion") or None,
                  fila.get("Teléfono") or fila.get("Telefono") or None,
                  fila.get("Email") or None, fila.get("Departamento") or None,
-                 fila.get("Municipio") or None, fila.get("Vereda") or None,
+                 canon_municipio(fila.get("Municipio")), fila.get("Vereda") or None,
                  parse_float(fila.get("Latitud")), parse_float(fila.get("Longitud")),
                  fila.get("RSPP") or None, fila.get("Especie") or None,
                  fila.get("FinZootécnico") or fila.get("FinZootecnico") or None,
