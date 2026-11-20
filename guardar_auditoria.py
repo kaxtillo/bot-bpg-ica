@@ -26,7 +26,7 @@ import sys
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from importar_hoja import canon_municipio  # grafía canónica del municipio (Cajibio → Cajibío)
+from importar_hoja import canon_municipio, canon_vereda  # grafía canónica de municipio y vereda
 
 DB = os.path.expanduser("~/auditorias_bpg/auditorias_bpg.db")
 
@@ -117,7 +117,7 @@ def main():
     campos = ("propietario, identificacion, telefono, email, departamento, municipio, "
               "vereda, latitud, longitud, rspp, especie, fin_zootecnico, produccion, total_animales")
     vals = (d.get("propietario"), d.get("identificacion"), d.get("telefono"), d.get("email"),
-            d.get("departamento"), canon_municipio(d.get("municipio")), d.get("vereda"), d.get("latitud"),
+            d.get("departamento"), canon_municipio(d.get("municipio")), canon_vereda(d.get("vereda")), d.get("latitud"),
             d.get("longitud"), d.get("rspp"), d.get("especie"), d.get("fin_zootecnico"),
             d.get("produccion"), d.get("total_animales"))
     # buscar existente ignorando mayúsculas (evita La Vega vs LA VEGA)
