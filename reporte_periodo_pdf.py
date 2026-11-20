@@ -88,6 +88,8 @@ def main():
     ap.add_argument("--desde", default="2026-11-19")
     ap.add_argument("--hasta", default="2026-11-20")
     ap.add_argument("--salida", default=None)
+    ap.add_argument("--con-seguimiento", action="store_true",
+                    help="añade la sección de visitas de seguimiento (predios ya registrados)")
     a = ap.parse_args()
 
     con = sqlite3.connect(DB)
@@ -95,7 +97,7 @@ def main():
     filas = predios_del_periodo(con, a.desde, a.hasta)
     if not filas:
         print("Sin predios en ese periodo."); return 1
-    seg = seguimiento(con, a.desde, a.hasta)
+    seg = seguimiento(con, a.desde, a.hasta) if a.con_seguimiento else []
 
     cert = [f for f in filas if f["concepto"] == "Certificable"]
     apl = [f for f in filas if f["concepto"] != "Certificable"]
