@@ -15,7 +15,8 @@ import os
 import subprocess
 import tempfile
 
-NAVEGADORES = ["chromium", "chromium-browser", "brave", "google-chrome-stable", "/usr/sbin/brave"]
+NAVEGADORES = ["chromium", "chromium-browser", "/usr/sbin/chromium", "brave", "/usr/sbin/brave",
+               "google-chrome-stable"]
 
 
 def _weasyprint(html, salida):
@@ -58,13 +59,25 @@ def _navegador(html, salida):
             pass
 
 
-def html_a_pdf(html, salida):
-    """Devuelve (ok, nombre_del_motor)."""
+def html_a_pdf(html, salida, preferido="auto"):
+    """Renderiza y devuelve (ok, nombre_del_motor).
+
+    preferido:
+      "auto"      → WeasyPrint primero (sin navegador, resultados idénticos siempre)
+      "navegador" → chromium/brave primero; úsalo cuando el HTML se diseñó para un
+                    navegador (flexbox, grid) y se busca fidelidad exacta, p. ej. la
+                    plantilla del plan de acción que sale del dashboard.
+    """
     os.makedirs(os.path.dirname(os.path.abspath(salida)) or ".", exist_ok=True)
     if os.path.exists(salida):
         os.unlink(salida)
-    if _weasyprint(html, salida):
-        return True, "weasyprint"
-    if _navegador(html, salida):
-        return True, "navegador"
+
+    orden = (("navegador", _navegador), ("weasyprint", _weasyprint))
+    if preferido == "navegador":
+        orden = tuple(reversed(orden))
+    for nombre, motor in orden:
+        if motor(html, salida):
+            return True, nombre
+        if os.path.exists(salida):
+            os.unlink(salida)
     return False, "ninguno"
