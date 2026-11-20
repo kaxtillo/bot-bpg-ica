@@ -127,15 +127,14 @@ def main():
     etiqueta = sin_tildes(mun or "todos").replace(" ", "_")
     html_path = os.path.join(SCRATCH, "listado_" + etiqueta + ".html")
     salida = a.salida or os.path.join(BASE, "Listado_Predios_" + etiqueta.title() + ".pdf")
-    open(html_path, "w", encoding="utf-8").write(construir_html(datos, mun, a.contacto))
+    html = construir_html(datos, mun, a.contacto)
+    open(html_path, "w", encoding="utf-8").write(html)
 
-    perfil = os.path.join(SCRATCH, "cr-listado")
-    cmd = ["chromium", "--headless=new", "--no-sandbox", "--disable-gpu", "--no-first-run",
-           "--disable-extensions", "--user-data-dir=" + perfil, "--no-pdf-header-footer",
-           "--virtual-time-budget=5000", "--print-to-pdf=" + salida, "file://" + html_path]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
-    if not os.path.exists(salida):
-        print("ERROR al generar el PDF:", r.stderr[-300:]); return 1
+    sys.path.insert(0, BASE)
+    from pdf_html import html_a_pdf
+    ok, motor = html_a_pdf(html, salida)
+    if not ok:
+        print("ERROR: ningún motor de PDF disponible (weasyprint/chromium/brave)"); return 1
 
     print("PDF: " + salida)
     print("predios: " + str(len(datos)) + " · " + (mun or "todos") +
