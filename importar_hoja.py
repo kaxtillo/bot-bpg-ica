@@ -94,7 +94,7 @@ VEREDAS = {
     "launion": "La Unión", "launionbaja": "La Unión",
     "senegueta": "Cenegueta", "cenegueta": "Cenegueta",   # grafía oficial: Cenegueta
     "laclaudia": "La Claudia",
-    "cohetera": "Cohetera",
+    "cohetera": "Cohetera", "lacohetera": "Cohetera",
     "urbano": "Urbano",
     "piedradeleon": "Piedra de León",
     "casasnuevas": "Casas Nuevas",
@@ -104,6 +104,7 @@ VEREDAS = {
     "elroble": "El Roble",
     "campamento": "Campamento",
     "cairo": "Cairo",
+    "sanjosedelalaguna": "San José de la Laguna",
 }
 
 
