@@ -24,38 +24,37 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # El paquete 'tools' fue retirado del repositorio de Android SDK: si no se
+      # El paquete 'tools' fue retirado del repositorio del SDK de Android; si no se
       # sobreescribe 'packages', setup-android intenta instalarlo y falla con
-      # "Failed to find package 'tools'". Con platform-tools basta para arrancar.
+      # "Failed to find package 'tools'".
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
 
-      # Capacitor 6 compila con compileSdk 34, por eso se instala explícitamente.
+      # Capacitor 6 compila con compileSdk 34.
       - name: Install SDK packages for Capacitor 6
-        run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
-          sdkmanager --list_installed | sed -n '1,25p'
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Cache debug keystore (firma estable entre builds)
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: android-debug-keystore-v1
-
-      - name: Generate debug keystore if missing
+      # La firma se toma de un secreto del repositorio para que NO cambie entre
+      # compilaciones: si cambia, el APK deja de poder instalarse sobre el anterior.
+      # (Antes se usaba actions/cache y el caché caducó, generando una firma nueva.)
+      - name: Restaurar keystore de firma
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
         run: |
-          if [ ! -f ~/.android/debug.keystore ]; then
-            mkdir -p ~/.android
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE_B64" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Firma: keystore del secreto (estable entre compilaciones)"
+          else
+            echo "::warning::Falta el secreto ANDROID_KEYSTORE_B64: se genera una firma nueva y el APK no podrá instalarse sobre el anterior"
             keytool -genkeypair -v -keystore ~/.android/debug.keystore \
               -alias androiddebugkey -storepass android -keypass android \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
-            echo "Keystore generado (primera vez)"
-          else
-            echo "Keystore restaurado del cache (misma firma)"
           fi
+          keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep -E "SHA256:" || true
 
       - name: Install Capacitor
         run: npm install
