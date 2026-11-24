@@ -24,37 +24,29 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # El paquete 'tools' fue retirado del repositorio del SDK de Android; si no se
-      # sobreescribe 'packages', setup-android intenta instalarlo y falla con
-      # "Failed to find package 'tools'".
+      # El paquete 'tools' fue retirado del repositorio del SDK de Android.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools'
 
-      # Capacitor 6 compila con compileSdk 34.
       - name: Install SDK packages for Capacitor 6
         run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
-      # La firma se toma de un secreto del repositorio para que NO cambie entre
-      # compilaciones: si cambia, el APK deja de poder instalarse sobre el anterior.
-      # (Antes se usaba actions/cache y el caché caducó, generando una firma nueva.)
+      # Firma tomada de un secreto del repositorio: NO debe cambiar entre builds,
+      # porque si cambia el APK deja de poder instalarse sobre el anterior.
       - name: Restaurar keystore de firma
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
         run: |
           mkdir -p ~/.android
-          if [ -n "$KEYSTORE_B64" ]; then
-            printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
-            echo "Firma: keystore del secreto (estable entre compilaciones)"
-          else
-            echo "::warning::Falta el secreto ANDROID_KEYSTORE_B64: se genera una firma nueva y el APK no podrá instalarse sobre el anterior"
-            keytool -genkeypair -v -keystore ~/.android/debug.keystore \
-              -alias androiddebugkey -storepass android -keypass android \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Falta el secreto ANDROID_KEYSTORE_B64"
+            exit 1
           fi
-          keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep -E "SHA256:" || true
+          printf '%s' "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          echo "Firma del keystore:"
+          keytool -J-Duser.language=en -list -v -keystore ~/.android/debug.keystore -storepass android | grep -E "SHA256:" || true
 
       - name: Install Capacitor
         run: npm install
@@ -62,11 +54,54 @@ jobs:
       - name: Add Android platform
         run: npx cap add android && npx cap sync android
 
+      # AGP no siempre usa ~/.android/debug.keystore (depende de cómo resuelva el
+      # home del runner). Se declara el signingConfig debug apuntando al keystore
+      # restaurado, para que la firma sea determinista.
+      - name: Fijar firma debug al keystore restaurado
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path("android/app/build.gradle")
+          s = p.read_text()
+          assert "android {" in s, "no encontré el bloque android{}"
+          if "signingConfigs" not in s:
+              bloque = (
+                  "\n    signingConfigs {\n"
+                  "        debug {\n"
+                  '            storeFile file(System.getProperty("user.home") + "/.android/debug.keystore")\n'
+                  "            storePassword 'android'\n"
+                  "            keyAlias 'androiddebugkey'\n"
+                  "            keyPassword 'android'\n"
+                  "        }\n"
+                  "    }\n"
+              )
+              s = s.replace("android {", "android {" + bloque, 1)
+              p.write_text(s)
+              print("signingConfigs.debug inyectado")
+          else:
+              print("signingConfigs ya presente, no se toca")
+          PY
+          grep -A7 "signingConfigs" android/app/build.gradle | head -12
+
       - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # Si la firma del APK no coincide con el keystore, el build falla aquí:
+      # es preferible un build rojo a un APK que nadie puede instalar.
+      - name: Verificar que la firma del APK sea la del secreto
+        run: |
+          ESPERADA=$(keytool -J-Duser.language=en -list -v -keystore ~/.android/debug.keystore -storepass android | awk '/SHA256:/{print $2; exit}')
+          OBTENIDA=$(keytool -J-Duser.language=en -printcert -jarfile android/app/build/outputs/apk/debug/app-debug.apk | awk '/SHA256:/{print $2; exit}')
+          echo "keystore: $ESPERADA"
+          echo "apk     : $OBTENIDA"
+          if [ -z "$OBTENIDA" ] || [ "$ESPERADA" != "$OBTENIDA" ]; then
+            echo "::error::La firma del APK no coincide con el keystore del secreto"
+            exit 1
+          fi
+          echo "### Firma verificada: $OBTENIDA" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
