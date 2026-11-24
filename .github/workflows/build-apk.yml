@@ -24,8 +24,19 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # El paquete 'tools' fue retirado del repositorio de Android SDK: si no se
+      # sobreescribe 'packages', setup-android intenta instalarlo y falla con
+      # "Failed to find package 'tools'". Con platform-tools basta para arrancar.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+
+      # Capacitor 6 compila con compileSdk 34, por eso se instala explícitamente.
+      - name: Install SDK packages for Capacitor 6
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+          sdkmanager --list_installed | sed -n '1,25p'
 
       - name: Cache debug keystore (firma estable entre builds)
         uses: actions/cache@v4
@@ -56,10 +67,11 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: auditor-bpg-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
