@@ -22,7 +22,12 @@ case "$SYNC_HOJA" in
     *"Error"*|*"error"*|*"❌"*) MENSAJES+="⚠️ Falló la sincronización con Google Sheets (ver /tmp/sync_hoja.log)\n" ;;
 esac
 
-# 1b. Seguimiento de hallazgos (crea filas para hallazgos nuevos; no pisa estados)
+# 1b. Excepciones: criterios que no aplican a un predio concreto (p. ej. ordeño móvil
+#     en un predio de ordeño fijo). Van DESPUÉS de cualquier importación porque Kobo y la
+#     hoja vuelven a traer el NO original y dejarían al predio aplazado sin motivo.
+$PY excepciones.py --aplicar >/tmp/excepciones.log 2>&1
+
+# 1c. Seguimiento de hallazgos (crea filas para hallazgos nuevos; no pisa estados)
 $PY seguimiento.py sync >/tmp/seguimiento_sync.log 2>&1
 
 # 2. BD → GeoJSON → subir mapa (solo si cambió)
