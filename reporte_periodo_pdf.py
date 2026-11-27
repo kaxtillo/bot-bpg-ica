@@ -45,8 +45,8 @@ tfoot td{background:#f2f6f4;font-weight:600}
 </style>"""
 
 
-def predios_del_periodo(con, desde, hasta):
-    return con.execute("""
+def predios_del_periodo(con, desde, hasta, incluir=None):
+    filas = con.execute("""
         SELECT p.id, p.nombre, p.propietario, p.municipio, p.vereda,
                MIN(a.fecha) AS primera,
                (SELECT concepto FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) concepto,
@@ -64,6 +64,34 @@ def predios_del_periodo(con, desde, hasta):
         FROM predios p JOIN auditorias a ON a.predio_id=p.id
         GROUP BY p.id HAVING primera BETWEEN ? AND ? ORDER BY p.vereda, p.nombre""",
         (desde, hasta)).fetchall()
+
+    # Predios pedidos explícitamente aunque su primera visita sea anterior al periodo
+    # (caso típico: fincas de la misma jornada de campo que ya tenían historial).
+    if incluir:
+        ya = {f["id"] for f in filas}
+        for nombre in incluir:
+            fila = con.execute("""
+                SELECT p.id, p.nombre, p.propietario, p.municipio, p.vereda,
+                       MIN(a.fecha) AS primera,
+                       (SELECT concepto FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) concepto,
+                       (SELECT f_cumplidos FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) fc,
+                       (SELECT f_total FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) ft,
+                       (SELECT f_pct FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) fp,
+                       (SELECT my_pct FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) myp,
+                       (SELECT mn_pct FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) mnp,
+                       (SELECT COUNT(*) FROM respuestas r WHERE r.auditoria_id=
+                           (SELECT id FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1)
+                           AND r.respuesta='NO') hall,
+                       (SELECT COUNT(*) FROM respuestas r WHERE r.auditoria_id=
+                           (SELECT id FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1)
+                           AND r.respuesta='NO' AND r.criterio_id IN (SELECT id FROM criterios WHERE tipo='F')) hall_f
+                FROM predios p JOIN auditorias a ON a.predio_id=p.id
+                WHERE UPPER(TRIM(p.nombre)) = UPPER(TRIM(?))
+                GROUP BY p.id""", (nombre,)).fetchone()
+            if fila and fila["id"] not in ya:
+                filas.append(dict(fila, incluido_manual=1))
+                ya.add(fila["id"])
+    return sorted(filas, key=lambda f: ((f["vereda"] or ""), (f["nombre"] or "")))
 
 
 def seguimiento(con, desde, hasta):
@@ -90,11 +118,14 @@ def main():
     ap.add_argument("--salida", default=None)
     ap.add_argument("--con-seguimiento", action="store_true",
                     help="añade la sección de visitas de seguimiento (predios ya registrados)")
+    ap.add_argument("--incluir", default="",
+                    help="nombres de predios a incluir aunque su primera visita sea anterior al periodo, separados por coma")
     a = ap.parse_args()
 
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
-    filas = predios_del_periodo(con, a.desde, a.hasta)
+    filas = predios_del_periodo(con, a.desde, a.hasta,
+                                [x.strip() for x in a.incluir.split(",") if x.strip()])
     if not filas:
         print("Sin predios en ese periodo."); return 1
     seg = seguimiento(con, a.desde, a.hasta) if a.con_seguimiento else []
@@ -111,10 +142,14 @@ def main():
 
     # tabla de predios
     trs = []
+    hubo_incluido = False
     for i, f in enumerate(filas, 1):
         clase = "cert" if f["concepto"] == "Certificable" else "apl"
+        incl = bool(f["incluido_manual"]) if "incluido_manual" in f.keys() else False
+        hubo_incluido = hubo_incluido or incl
+        marca = " <span style='color:#B26A00;font-weight:700'>*</span>" if incl else ""
         trs.append("<tr><td class='c'>" + str(i) + "</td>"
-                   + "<td><b>" + (f["nombre"] or "") + "</b></td>"
+                   + "<td><b>" + (f["nombre"] or "") + "</b>" + marca + "</td>"
                    + "<td>" + (f["propietario"] or "—") + "</td>"
                    + "<td>" + (f["vereda"] or "—") + "</td>"
                    + "<td class='c'>" + fmt_fecha(f["primera"]) + "</td>"
@@ -172,7 +207,9 @@ def main():
             "<td colspan='4'></td></tr></tfoot></table>"
             "<div class='nota'>Umbrales oficiales: Fundamentales 100% · Mayores ≥ 80% · Menores ≥ 60%. "
             "Los criterios no aplicables (NA) no entran en el cálculo.</div>"
-
+            + ("<div class='nota'><b>*</b> Predio incluido por solicitud: se evaluó en la misma jornada de "
+               "campo, aunque su primera visita registrada es anterior al periodo.</div>" if hubo_incluido else "")
+            +
             "<h2>2. Distribución por vereda</h2>"
             "<table><thead><tr><th>Vereda</th><th>Predios</th><th>Certificables</th><th>Aplazados</th></tr></thead><tbody>"
             + "".join(tv) + "</tbody></table>"
