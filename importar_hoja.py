@@ -40,6 +40,20 @@ def parse_float(v):
         return None
 
 
+def parse_coord(v, tipo):
+    """Convierte una coordenada y valida que esté en el rango de Colombia.
+
+    Sin esta validación, un valor como '2.623.963' (que la hoja muestra con separador
+    de miles) entra como 2623.963 y el predio queda fuera del mapa sin que nadie lo note.
+    """
+    x = parse_float(v)
+    if x is None:
+        return None
+    if tipo == "lat":
+        return x if -5.0 <= x <= 14.0 else None
+    return x if -82.0 <= x <= -66.0 else None
+
+
 def normalizar_respuesta(v):
     if v is None:
         return None
@@ -221,7 +235,7 @@ def main():
                  fila.get("Teléfono") or fila.get("Telefono") or None,
                  fila.get("Email") or None, fila.get("Departamento") or None,
                  canon_municipio(fila.get("Municipio")), canon_vereda(fila.get("Vereda")),
-                 parse_float(fila.get("Latitud")), parse_float(fila.get("Longitud")),
+                 parse_coord(fila.get("Latitud"), "lat"), parse_coord(fila.get("Longitud"), "lon"),
                  fila.get("RSPP") or None, fila.get("Especie") or None,
                  fila.get("FinZootécnico") or fila.get("FinZootecnico") or None,
                  fila.get("Producción") or fila.get("Produccion") or None,
