@@ -123,6 +123,19 @@ def canon_vereda(v):
     return VEREDAS.get(_plano(s), s)
 
 
+# Fuentes cuyo contenido NO se puede sobrescribir desde la hoja: los criterios vienen
+# del formulario o de la app y la hoja solo debe aportar datos maestros.
+ORIGENES_DIGITALES = ("bot auditoria", "kobo", "api", "app", "telegram")
+
+
+def es_digital(fuente):
+    """True si la auditoría se cargó desde una captura digital (no desde la hoja)."""
+    f = str(fuente or "").lower()
+    if f.startswith("csv") or "hoja" in f:
+        return False
+    return any(o in f for o in ORIGENES_DIGITALES) or f.strip() == ""
+
+
 def recalcular_auditoria(con, aid, tipos):
     """Recalcula % y concepto de una auditoría desde sus respuestas."""
     resp = dict(con.execute(
@@ -174,13 +187,14 @@ def main():
     tipos = dict(con.execute("SELECT id, tipo FROM criterios").fetchall())
     tiene_col_fecha = "Fecha" in header
 
-    n_filas = n_nuevas = n_act = 0
+    n_filas = n_nuevas = n_act = n_protegidas = 0
     with open(path, newline="", encoding="utf-8-sig") as f:
         for fila in csv.DictReader(f):
             predio_nombre = (fila.get("Predio") or "").strip().upper()
             if not predio_nombre:
                 continue
             n_filas += 1
+            protegida = False
             concepto = (fila.get("Concepto") or "Sin concepto").strip()
             obs = fila.get("Observación") or fila.get("Observacion") or None
             rec = fila.get("Recomendación") or fila.get("Recomendacion") or None
@@ -223,11 +237,19 @@ def main():
                     (pid,)).fetchone()
                 if ultima:
                     aid = ultima[0]
-                    con.execute("DELETE FROM respuestas WHERE auditoria_id=?", (aid,))
-                    con.execute("UPDATE auditorias SET concepto=?, observaciones=?, recomendaciones=? WHERE id=?",
-                                (concepto, obs, rec, aid))
-                    modo = "actualizada"
-                    n_act += 1
+                    fuente_actual = con.execute(
+                        "SELECT fuente FROM auditorias WHERE id=?", (aid,)).fetchone()[0]
+                    if es_digital(fuente_actual):
+                        # Captura digital: la hoja NO reescribe sus 62 respuestas.
+                        protegida = True
+                        modo = "protegida"
+                        n_protegidas += 1
+                    else:
+                        con.execute("DELETE FROM respuestas WHERE auditoria_id=?", (aid,))
+                        con.execute("UPDATE auditorias SET concepto=?, observaciones=?, recomendaciones=? WHERE id=?",
+                                    (concepto, obs, rec, aid))
+                        modo = "actualizada"
+                        n_act += 1
                 else:
                     cur = con.execute(
                         "INSERT INTO auditorias (predio_id, fecha, concepto, observaciones, recomendaciones, fuente) "
@@ -246,9 +268,16 @@ def main():
                     (pid, fecha, concepto)).fetchone()
                 if existente:
                     aid = existente[0]
-                    con.execute("DELETE FROM respuestas WHERE auditoria_id=?", (aid,))
-                    modo = "actualizada"
-                    n_act += 1
+                    fuente_actual = con.execute(
+                        "SELECT fuente FROM auditorias WHERE id=?", (aid,)).fetchone()[0]
+                    if es_digital(fuente_actual):
+                        protegida = True
+                        modo = "protegida"
+                        n_protegidas += 1
+                    else:
+                        con.execute("DELETE FROM respuestas WHERE auditoria_id=?", (aid,))
+                        modo = "actualizada"
+                        n_act += 1
                 else:
                     cur = con.execute(
                         "INSERT INTO auditorias (predio_id, fecha, concepto, observaciones, recomendaciones, fuente) "
@@ -260,19 +289,22 @@ def main():
             else:
                 aid = None
 
-            # --- respuestas por criterio ---
+            # --- respuestas por criterio (nunca sobre una captura digital) ---
             n_resp = 0
-            for cid, col in crit_cols.items():
-                if cid not in validos:
-                    continue
-                resp = normalizar_respuesta(fila.get(col))
-                if resp:
-                    con.execute("INSERT INTO respuestas (auditoria_id, criterio_id, respuesta) VALUES (?,?,?)",
-                                (aid, cid, resp))
-                    n_resp += 1
+            if not protegida and aid is not None:
+                for cid, col in crit_cols.items():
+                    if cid not in validos:
+                        continue
+                    resp = normalizar_respuesta(fila.get(col))
+                    if resp:
+                        con.execute("INSERT INTO respuestas (auditoria_id, criterio_id, respuesta) VALUES (?,?,?)",
+                                    (aid, cid, resp))
+                        n_resp += 1
 
-            # RECALCULAR % y concepto desde respuestas (anti-% corruptos de la hoja)
-            recalcular_auditoria(con, aid, tipos)
+                # RECALCULAR % y concepto desde respuestas (anti-% corruptos de la hoja)
+                recalcular_auditoria(con, aid, tipos)
+            if aid is None:
+                continue
             fecha_mostrar = con.execute("SELECT fecha FROM auditorias WHERE id=?", (aid,)).fetchone()[0]
             concepto_final = con.execute("SELECT concepto FROM auditorias WHERE id=?", (aid,)).fetchone()[0]
             print(f"  [{modo}] {predio_nombre:14s} {fecha_mostrar} → {concepto_final} ({n_resp} respuestas)")
