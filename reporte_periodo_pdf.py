@@ -16,22 +16,22 @@ DB = os.path.join(BASE, "auditorias_bpg.db")
 SCRATCH = os.path.expanduser("~/.hermes/cache/scratch")
 
 CSS = """<style>
-@page{size:A4 portrait;margin:14mm}
+@page{size:A4 portrait;margin:10mm 12mm}
 *{box-sizing:border-box}
 body{font-family:'Segoe UI',Arial,sans-serif;color:#1b2b26;margin:0;font-size:9.2px}
-.cab{background:#0B3D2E;color:#fff;padding:14px 16px;border-radius:4px}
+.cab{background:#0B3D2E;color:#fff;padding:10px 14px;border-radius:4px}
 .cab h1{margin:0;font-size:17px;letter-spacing:.3px}
 .cab .sub{margin-top:3px;font-size:10.5px;opacity:.92}
-.periodo{margin:10px 0 12px;font-size:11px;color:#37474F}
+.periodo{margin:7px 0 9px;font-size:10px;color:#37474F}
 .kpis{width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 0 12px}
 td.kpi{width:25%;border:1px solid #cfdad5;border-top:4px solid #0B3D2E;border-radius:4px;padding:8px 10px;background:#f7faf8;vertical-align:top}
-td.kpi .n{font-size:20px;font-weight:700;color:#0B3D2E;line-height:1.1}
+td.kpi .n{font-size:17px;font-weight:700;color:#0B3D2E;line-height:1.1}
 td.kpi .l{font-size:9.5px;color:#5b6b66;text-transform:uppercase;letter-spacing:.4px}
 td.kpi.verde{border-top-color:#2E7D32}td.kpi.verde .n{color:#2E7D32}
 td.kpi.rojo{border-top-color:#C62828}td.kpi.rojo .n{color:#C62828}
-h2{font-size:12px;color:#0B3D2E;margin:16px 0 6px;border-bottom:1px solid #cfdad5;padding-bottom:3px}
+h2{font-size:11.5px;color:#0B3D2E;margin:10px 0 4px;border-bottom:1px solid #cfdad5;padding-bottom:3px}
 table{width:100%;border-collapse:collapse;margin-bottom:4px}
-th,td{border:1px solid #c3cfc9;padding:2.6px 4px;font-size:8.7px;vertical-align:top}
+th,td{border:1px solid #c3cfc9;padding:2.1px 4px;font-size:8.5px;vertical-align:top}
 th{background:#eef3f0;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px}
 td.c{text-align:center;white-space:nowrap}
 td.n{text-align:right;white-space:nowrap}
@@ -39,8 +39,8 @@ td.n{text-align:right;white-space:nowrap}
 .apl{color:#C62828;font-weight:600}
 tfoot td{background:#f2f6f4;font-weight:600}
 .nota{font-size:9.3px;color:#546e64;margin-top:3px}
-.pie{margin-top:16px;border-top:1px solid #c3cfc9;padding-top:7px;font-size:8.8px;color:#5b6b66;line-height:1.45}
-.firma{width:100%;margin-top:22px;font-size:9.5px;border-collapse:separate;border-spacing:40px 0}
+.pie{margin-top:8px;border-top:1px solid #c3cfc9;padding-top:5px;font-size:7.7px;color:#5b6b66;line-height:1.35}
+.firma{width:100%;margin-top:11px;font-size:9px;border-collapse:separate;border-spacing:40px 0}
 .firma td{border:0;border-top:1px solid #333;padding-top:4px}
 </style>"""
 
