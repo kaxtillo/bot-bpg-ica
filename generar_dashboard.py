@@ -51,16 +51,17 @@ def _unificar_municipios(*listas):
             f["municipio"] = canon[_norm_mun(f["municipio"])]
 
 
-# ── predios georreferenciados (mapa / KPIs / tabla) ────────────────────────
+# ── todos los predios con su última auditoría (KPIs / tabla / mapa) ────────
+#    Se incluyen también los que no tienen coordenadas: cuentan en los totales
+#    y en la tabla, pero el mapa solo dibuja los georreferenciados.
 rows = con.execute("""
-SELECT p.id, p.nombre, p.municipio, p.vereda, p.latitud lat, p.longitud lon,
-       a.fecha, a.concepto, a.f_pct, a.my_pct, a.mn_pct,
-       (SELECT COUNT(*) FROM respuestas r WHERE r.auditoria_id=a.id AND r.respuesta='NO') hallazgos
-FROM predios p
-JOIN auditorias a ON a.id=(SELECT id FROM auditorias WHERE predio_id=p.id
-                           ORDER BY fecha DESC, id DESC LIMIT 1)
-WHERE p.latitud IS NOT NULL AND p.latitud!=0 AND p.longitud IS NOT NULL AND p.longitud!=0
-ORDER BY p.nombre""").fetchall()
+  SELECT p.id, p.nombre, p.municipio, p.vereda, p.latitud lat, p.longitud lon,
+         a.fecha, a.concepto, a.f_pct, a.my_pct, a.mn_pct,
+         (SELECT COUNT(*) FROM respuestas r WHERE r.auditoria_id=a.id AND r.respuesta='NO') hallazgos
+  FROM predios p
+  JOIN auditorias a ON a.id=(SELECT id FROM auditorias WHERE predio_id=p.id
+                             ORDER BY fecha DESC, id DESC LIMIT 1)
+  ORDER BY p.nombre""").fetchall()
 datos = [dict(r) for r in rows]
 munis = sorted(set(d["municipio"] for d in datos if d["municipio"]))
 
@@ -217,7 +218,7 @@ tbody tr.clic{cursor:pointer} tbody tr.clic:hover{background:#eef6f1}
   <div class="card"><div class="lab" style="color:var(--g)">Certificables</div><div class="num" style="color:var(--g)" id="kCert">0</div></div>
   <div class="card"><div class="lab" style="color:var(--r)">Aplazados</div><div class="num" style="color:var(--r)" id="kApl">0</div></div>
  </div>
- <div class="plt" style="margin-bottom:18px"><h3>🗺️ Mapa de predios (ubicación y certificación)</h3><div id="mapa"></div></div>
+ <div class="plt" style="margin-bottom:18px"><h3>🗺️ Mapa de predios (ubicación y certificación)</h3><div id="mapa"></div><div id="notaMapa" style="font-size:11px;color:#6b7c76;padding:4px 8px 0"></div></div>
  <div class="grid">
   <div class="plt"><h3>Estado de certificación</h3><canvas id="cConcepto" height="160"></canvas></div>
   <div class="plt"><h3>Predios por municipio <span style="font-size:11px;color:#6b7c76;font-weight:400">(clic en barra para filtrar)</span></h3><canvas id="cMunicipio" height="160"></canvas></div>
@@ -248,6 +249,10 @@ let capaPredios=null, chConc=null, chMun=null, marcados={};
 const e=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 function renderMapa(ds){
+  const nota=document.getElementById('notaMapa');
+  const geo=ds.filter(d=>d.lat&&d.lon);
+  if(nota)nota.textContent=geo.length+' de '+ds.length+' predios georreferenciados'+
+    (geo.length<ds.length?' · los '+(ds.length-geo.length)+' restantes aparecen en la tabla y en la consulta, sin ubicación en el mapa':'');
   if(!map){
     const c=document.getElementById('mapa');
     if(c)c.innerHTML='<div style="padding:26px;text-align:center;color:#666">⚠️ No se pudo cargar el mapa (sin conexión con el servicio de mapas).<br>El resto del tablero y la consulta por identificación siguen funcionando.</div>';
@@ -255,7 +260,7 @@ function renderMapa(ds){
   }
   if(capaPredios)map.removeLayer(capaPredios);
   marcados={};
-  const feats=ds.map(d=>({type:'Feature',properties:d,geometry:{type:'Point',coordinates:[d.lon,d.lat]}}));
+  const feats=geo.map(d=>({type:'Feature',properties:d,geometry:{type:'Point',coordinates:[d.lon,d.lat]}}));
   capaPredios=L.geoJSON({type:'FeatureCollection',features:feats},{
     pointToLayer:function(f,ll){
       const m=L.marker(ll,{icon:f.properties.concepto==='Certificable'?iconV:iconR});
@@ -288,7 +293,7 @@ function renderKpis(ds){
   document.getElementById('kCert').textContent=c;
   document.getElementById('kApl').textContent=ds.length-c;
   document.getElementById('ttlPredios').textContent=ds.length;
-  document.getElementById('resumenFiltro').textContent=MUN==='Todos'?('Mostrando los '+ds.length+' predios georreferenciados'):('Focalizado en '+MUN+' — '+ds.length+' predios');
+  document.getElementById('resumenFiltro').textContent=MUN==='Todos'?('Mostrando los '+ds.length+' predios evaluados'):('Focalizado en '+MUN+' — '+ds.length+' predios');
 }
 function renderTabla(ds){
   document.getElementById('tabla').innerHTML=ds.map(d=>
