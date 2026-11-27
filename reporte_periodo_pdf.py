@@ -49,6 +49,7 @@ def predios_del_periodo(con, desde, hasta, incluir=None):
     filas = con.execute("""
         SELECT p.id, p.nombre, p.propietario, p.municipio, p.vereda,
                MIN(a.fecha) AS primera,
+               MAX(a.fecha) AS ultima,
                (SELECT concepto FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) concepto,
                (SELECT f_cumplidos FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) fc,
                (SELECT f_total FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) ft,
@@ -73,6 +74,7 @@ def predios_del_periodo(con, desde, hasta, incluir=None):
             fila = con.execute("""
                 SELECT p.id, p.nombre, p.propietario, p.municipio, p.vereda,
                        MIN(a.fecha) AS primera,
+                       MAX(a.fecha) AS ultima,
                        (SELECT concepto FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) concepto,
                        (SELECT f_cumplidos FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) fc,
                        (SELECT f_total FROM auditorias WHERE predio_id=p.id ORDER BY fecha DESC,id DESC LIMIT 1) ft,
@@ -152,7 +154,7 @@ def main():
                    + "<td><b>" + (f["nombre"] or "") + "</b>" + marca + "</td>"
                    + "<td>" + (f["propietario"] or "—") + "</td>"
                    + "<td>" + (f["vereda"] or "—") + "</td>"
-                   + "<td class='c'>" + fmt_fecha(f["primera"]) + "</td>"
+                   + "<td class='c'>" + fmt_fecha(f["ultima"] if "ultima" in f.keys() else f["primera"]) + "</td>"
                    + "<td class='" + clase + "'>" + (f["concepto"] or "") + "</td>"
                    + "<td class='n'>" + (str(f["fc"]) + "/" + str(f["ft"]) + " · " + str(round(f["fp"] or 0, 1)) + "%") + "</td>"
                    + "<td class='n'>" + str(round(f["myp"] or 0, 1)) + "%</td>"
@@ -180,7 +182,7 @@ def main():
                             + ("cert" if s["concepto"] == "Certificable" else "apl") + "'>" + (s["concepto"] or "") + "</td></tr>"
                             for s in seg)
         ts = ("<h2>Visitas de seguimiento (predios ya registrados)</h2><table><thead><tr>"
-              "<th>Predio</th><th>Vereda</th><th>Fecha</th><th>Concepto</th></tr></thead><tbody>"
+              "<th>Predio</th><th>Vereda</th><th>Última visita</th><th>Concepto</th></tr></thead><tbody>"
               + filas_seg + "</tbody></table>"
               "<div class='nota'>Son revisiones de predios que ya estaban en el sistema; se contabilizan aparte "
               "para no duplicar el número de predios.</div>")
@@ -199,7 +201,7 @@ def main():
             "<td class='kpi'><div class='n'>" + str(len(veredas)) + "</div><div class='l'>Veredas</div></td>"
             "</tr></table>"
             "<h2>1. Detalle de los predios</h2>"
-            "<table><thead><tr><th>#</th><th>Predio</th><th>Propietario</th><th>Vereda</th><th>Fecha</th>"
+            "<table><thead><tr><th>#</th><th>Predio</th><th>Propietario</th><th>Vereda</th><th>Última visita</th>"
             "<th>Concepto</th><th>Fundamentales</th><th>Mayores</th><th>Menores</th><th>Hallazgos</th></tr></thead>"
             "<tbody>" + "".join(trs) + "</tbody>"
             "<tfoot><tr><td colspan='5'>TOTAL: " + str(len(filas)) + " predios</td>"
@@ -245,7 +247,7 @@ def main():
     print("PDF:", salida, "(motor: " + motor + ")")
     print(f"periodo {a.desde} → {a.hasta} · {len(filas)} predios · {len(cert)} certificables · {len(apl)} aplazados · {len(veredas)} veredas")
     for f in filas:
-        print(f"  {f['nombre']:<16} {f['vereda']:<14} {f['primera']} {f['concepto']:<13} F {f['fc']}/{f['ft']} · {f['hall']} hall")
+        print(f"  {f['nombre']:<16} {f['vereda']:<14} {(f['ultima'] if 'ultima' in f.keys() else f['primera'])} {f['concepto']:<13} F {f['fc']}/{f['ft']} · {f['hall']} hall")
     return 0
 
 
