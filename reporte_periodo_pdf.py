@@ -18,7 +18,7 @@ SCRATCH = os.path.expanduser("~/.hermes/cache/scratch")
 CSS = """<style>
 @page{size:A4 portrait;margin:14mm}
 *{box-sizing:border-box}
-body{font-family:'Segoe UI',Arial,sans-serif;color:#1b2b26;margin:0;font-size:10.5px}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1b2b26;margin:0;font-size:9.2px}
 .cab{background:#0B3D2E;color:#fff;padding:14px 16px;border-radius:4px}
 .cab h1{margin:0;font-size:17px;letter-spacing:.3px}
 .cab .sub{margin-top:3px;font-size:10.5px;opacity:.92}
@@ -31,7 +31,7 @@ td.kpi.verde{border-top-color:#2E7D32}td.kpi.verde .n{color:#2E7D32}
 td.kpi.rojo{border-top-color:#C62828}td.kpi.rojo .n{color:#C62828}
 h2{font-size:12px;color:#0B3D2E;margin:16px 0 6px;border-bottom:1px solid #cfdad5;padding-bottom:3px}
 table{width:100%;border-collapse:collapse;margin-bottom:4px}
-th,td{border:1px solid #c3cfc9;padding:4px 5px;font-size:9.8px;vertical-align:top}
+th,td{border:1px solid #c3cfc9;padding:2.6px 4px;font-size:8.7px;vertical-align:top}
 th{background:#eef3f0;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.3px}
 td.c{text-align:center;white-space:nowrap}
 td.n{text-align:right;white-space:nowrap}
